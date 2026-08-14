@@ -1,10 +1,14 @@
 {
-  "name": "@mhelix/protocol-types",
+  "name": "@mhelix/api",
   "version": "0.1.0",
   "private": true,
+  "description": "Bounded TestWired API shell for MidnightHelixCTW.",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

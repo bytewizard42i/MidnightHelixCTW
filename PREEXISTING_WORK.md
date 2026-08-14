@@ -88,6 +88,18 @@ They are retained as vision material, not proof that every depicted service is
 already integrated. Media ownership and permitted uses are recorded in
 `MEDIA_RIGHTS.md`.
 
+## Reimplemented API and infrastructure patterns
+
+Phase 1 uses neutral transport, routing, validation, and deployment patterns
+reimplemented from uncommitted working-tree sources in the original HelixCTW
+repository. No voice-note, payment, or unrelated scenario logic was imported.
+The Morrow contract and fail-closed behavior are new work here.
+
+Source paths and frozen SHA-256 digests are documented in
+[`docs/provenance/neutral-api-iac-patterns.md`](docs/provenance/neutral-api-iac-patterns.md).
+Because those source files were uncommitted, the digests identify their exact
+inspected bytes without presenting them as committed history.
+
 ## New MidnightHelixCTW work
 
 The submitted project will identify these as new hackathon work:

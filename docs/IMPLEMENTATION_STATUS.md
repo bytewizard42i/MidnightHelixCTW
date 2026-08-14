@@ -11,30 +11,49 @@ provider, test, deployment, or evidence claim changes.
 | --- | --- |
 | `LIVE TESTWIRED` | A named real test or cloud service was called successfully with synthetic data, and a current receipt or request identifier exists. |
 | `VERIFIED LOCAL` | The implementation passed locally against a real local service or compiler, but is not reachable from the public judge URL. |
-| `MOCK` | Deterministic local behavior that exercises an interface without calling the named external system. |
+| `MOCK` | Deterministic synthetic fixture or local behavior that does not call the named external system. Provider connection state is reported separately. |
 | `SOURCE ONLY` | Code or infrastructure exists but has not been executed successfully in the stated environment. |
 | `PLANNED` | Design work only. |
 
 There is no silent fallback from a live provider to a mock provider. A failed
 live provider returns a visible error and preserves the last verified state.
 
+### Machine identifiers
+
+API responses and source contracts use exactly `LIVE_TESTWIRED`,
+`VERIFIED_LOCAL`, `MOCK`, `SOURCE_ONLY`, and `PLANNED`. The spaced labels
+above are human-facing renderings only.
+
+`REALDEAL_TEST` is not a stage. It may appear only as an evidence label on one
+successful output carrying a sanitized real test-service receipt.
+
 ## Current standalone-repository status
 
 | Capability | Current status | Evidence required to promote it |
 | --- | --- | --- |
-| Standalone public source | IN PROGRESS | Public GitHub URL, Apache-2.0 detected, clean secret scan, reproducible install. |
-| Synthetic property fixtures | SOURCE ONLY | Root fixture verifier passes after the curated TestTown snapshot is imported. |
-| DIDz identity provider | MOCK | Deterministic identity fixture and contract tests. |
-| AgenticDID authority provider | MOCK | Scope, expiry, attenuation, and denial tests. |
-| RWAz property identity provider | MOCK | Persistent property identifier and title-status fixture tests. |
+| Standalone public source | VERIFIED_LOCAL | Public GitHub URL, Apache-2.0 detection, reproducible install, fixture/doc verification, and secret scans were checked on 2026-08-13. This does not prove a deployed app. |
+| Synthetic property fixtures | VERIFIED_LOCAL | The curated TestTown snapshot is present and the root fixture verifier passes locally. |
+| DIDz synthetic identity fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
+| AgenticDID synthetic authority fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
+| RWAz synthetic property fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
 | CockroachDB Managed MCP | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
-| AWS Lambda and API Gateway | PLANNED | Public generated URL, CloudWatch request ID, bounded endpoint, and incognito smoke test. |
+| AWS Lambda and API Gateway | SOURCE_ONLY | Phase 1 handler, eight-route contract, tests, and deployment source exist. Promotion still requires a public generated URL, CloudWatch request ID, and incognito smoke test. |
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
 | Reconstructible derived index | PLANNED | Shadow generation rebuilt from canonical test records, commitment verified, pointer flipped atomically, same answer returned. |
-| Public judge UI | PLANNED | Public URL, desktop/mobile end-to-end test, console/network clean. |
+| Public judge UI | SOURCE_ONLY | Phase 1 judge-interface source exists. Promotion still requires a public URL, desktop/mobile end-to-end test, and clean console/network results. |
+
+`MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
+reports all three provider connections as `NOT_CONNECTED` and does not call a
+provider implementation.
+### Phase 1 fail-closed boundary
+
+Until the named live providers are connected, valid operational POST requests
+return `503 LIVE_PROVIDERS_NOT_CONNECTED`. They do not mint run identifiers or
+receipts, return the fixture predicate as live evidence, or silently substitute
+mocks for CockroachDB, Bedrock, Midnight, Lambda, or API Gateway.
 
 ## Prior evidence that is not yet standalone proof
 

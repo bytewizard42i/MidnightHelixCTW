@@ -8,6 +8,7 @@
 **Environment:** Public test environment, synthetic data only
 **Hackathon:** CockroachDB x AWS, Build with Agentic Memory
 **License:** Apache-2.0
+**Start here:** [Canonical judge and developer repository index](docs/INDEX.md)
 
 MHelixCTW is a new, standalone hackathon project. It extracts a small,
 attributed HelixCTW data-adapter baseline from the entrant-owned DIDzMonolith
@@ -89,7 +90,7 @@ tests/e2e/                   Public judge-flow verification
 The clean-room repository foundation can be checked without cloud credentials:
 
 ```bash
-npm install
+npm ci
 npm test
 ```
 

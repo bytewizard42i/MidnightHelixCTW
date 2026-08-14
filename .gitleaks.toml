@@ -1,0 +1,3 @@
+# Keep the maintained default rules. Add an allowlist only after manual review.
+[extend]
+useDefault = true

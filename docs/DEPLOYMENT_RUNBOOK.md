@@ -33,16 +33,18 @@ Use one isolated environment:
 
 ```text
 application: MidnightHelixCTW
-stage: TestWired
+build stage: TESTWIRED
+initial deployment evidence: SOURCE_ONLY
 AWS stack: mhelixctw-testwired
 AWS region: us-east-1
 Cockroach database: mhelixctw_testwired
-evidence label: REALDEAL_TEST
+eligible output evidence label: REALDEAL_TEST
 fixture namespace: TestTownDIDz
 ```
 
-`REALDEAL_TEST` labels individual successful outputs. The overall product stage is
-`TestWired`.
+`REALDEAL_TEST` labels only an individual successful output carrying a sanitized
+real test-service receipt. It is never a deployment stage. The product build stage
+remains `TESTWIRED`; each capability is promoted separately only after its required live evidence is verified.
 
 ## Step 1, provision CockroachDB safely
 
@@ -85,11 +87,29 @@ Deploy one test stack containing:
 The minimum first route is:
 
 ```text
-GET /health
+GET /healthz
 ```
 
 It returns stage, source commit, region, and dependency configuration status. It
 does not call a paid model and does not expose secrets.
+
+The Phase 1 contract contains exactly eight routes:
+
+```text
+GET  /healthz
+GET  /api/v1/status
+GET  /api/v1/judge/scenarios
+POST /api/v1/judge/runs
+POST /api/v1/judge/runs/{runId}/sessions/close
+POST /api/v1/judge/runs/{runId}/recall
+POST /api/v1/judge/runs/{runId}/actions
+GET  /api/v1/judge/receipts/{receiptId}
+```
+
+Responses use schema `mhelixctw/api/v1`. POST requests require JSON and an
+`Idempotency-Key` matching `[A-Za-z0-9._:-]{16,128}`, reject unknown keys, and
+accept at most 4096 body bytes. Before provider connection, operational routes
+fail closed with `503 LIVE_PROVIDERS_NOT_CONNECTED`.
 
 ## Step 4, connect the real TestWired path
 

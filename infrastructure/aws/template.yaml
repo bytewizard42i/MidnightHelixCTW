@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  MidnightHelixCTW Phase 1 TestWired API shell. This stack creates a bounded
+  public transport only and connects no database, model, or test network.
+
+Rules:
+  DeployOnlyInUsEast1:
+    Assertions:
+      - Assert: !Equals [!Ref AWS::Region, us-east-1]
+        AssertDescription: MidnightHelixCTW TestWired is pinned to us-east-1.
+
+Parameters:
+  PublicAllowedOrigins:
+    Type: String
+    AllowedPattern: '^https://[A-Za-z0-9.-]+(?::[0-9]+)?(?:,https://[A-Za-z0-9.-]+(?::[0-9]+)?){0,3}$'
+    ConstraintDescription: >-
+      Supply one to four exact comma-delimited HTTPS origins without paths,
+      spaces, credentials, query strings, fragments, or wildcards.
+
+  ReleaseCommit:
+    Type: String
+    AllowedPattern: '^[0-9a-f]{40}$'
+    ConstraintDescription: Supply the exact 40-character Git commit deployed.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [7, 14, 30, 60, 90]
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    Architectures: [x86_64]
+    MemorySize: 256
+    Timeout: 10
+    Environment:
+      Variables:
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+        MHELIX_MAX_REQUEST_BYTES: "4096"
+        MHELIX_MAX_RESPONSE_BYTES: "32768"
+
+Resources:
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Project
+          Value: MidnightHelixCTW
+        - Key: Stage
+          Value: TestWired
+
+  ApiFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-worker
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Project
+          Value: MidnightHelixCTW
+        - Key: Stage
+          Value: TestWired
+
+  ApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Least-privilege logging role for the disconnected Phase 1 API shell.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteOnlyOwnSanitizedLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: WriteFunctionLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub >-
+                  arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-worker:*
+      Tags:
+        - Key: Project
+          Value: MidnightHelixCTW
+        - Key: Stage
+          Value: TestWired
+
+  TestWiredHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: MidnightHelixCTW fixed-operation TestWired front door.
+      StageName: $default
+      DisableExecuteApiEndpoint: false
+      FailOnWarnings: true
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title:
+            Fn::Sub: ${AWS::StackName} TestWired API
+          version: "1.0.0"
+        paths: {}
+      CorsConfiguration:
+        AllowOrigins: !Split [",", !Ref PublicAllowedOrigins]
+        AllowHeaders:
+          - Content-Type
+          - Idempotency-Key
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        ExposeHeaders:
+          - X-Request-Id
+        MaxAge: 300
+        AllowCredentials: false
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 2
+        ThrottlingRateLimit: 1
+        DetailedMetricsEnabled: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","integrationStatus":"$context.integrationStatus","responseLatency":"$context.responseLatency","integrationLatency":"$context.integrationLatency"}
+      Tags:
+        Project: MidnightHelixCTW
+        Stage: TestWired
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: ApiFunctionLogGroup
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-worker
+      Description: >-
+        Validates the fixed synthetic workflow and fails closed while live
+        providers remain disconnected.
+      CodeUri: ../../apps/api/
+      Handler: src/handler.handler
+      Role: !GetAtt ApiFunctionRole.Arn
+      Environment:
+        Variables:
+          MHELIX_PUBLIC_ALLOWED_ORIGINS: !Ref PublicAllowedOrigins
+          MHELIX_RELEASE_COMMIT: !Ref ReleaseCommit
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: GET
+            Path: /healthz
+            PayloadFormatVersion: "2.0"
+        Status:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: GET
+            Path: /api/v1/status
+            PayloadFormatVersion: "2.0"
+        Scenarios:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: GET
+            Path: /api/v1/judge/scenarios
+            PayloadFormatVersion: "2.0"
+        StartRun:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: POST
+            Path: /api/v1/judge/runs
+            PayloadFormatVersion: "2.0"
+        CloseSession:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: POST
+            Path: /api/v1/judge/runs/{runId}/sessions/close
+            PayloadFormatVersion: "2.0"
+        Recall:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: POST
+            Path: /api/v1/judge/runs/{runId}/recall
+            PayloadFormatVersion: "2.0"
+        ExecuteAction:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: POST
+            Path: /api/v1/judge/runs/{runId}/actions
+            PayloadFormatVersion: "2.0"
+        ReadReceipt:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref TestWiredHttpApi
+            Method: GET
+            Path: /api/v1/judge/receipts/{receiptId}
+            PayloadFormatVersion: "2.0"
+      Tags:
+        Project: MidnightHelixCTW
+        Stage: TestWired
+
+Outputs:
+  TestWiredApiUrl:
+    Description: Generated API Gateway HTTPS URL. Use this before custom DNS.
+    Value: !Sub https://${TestWiredHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+
+  TestWiredFunctionName:
+    Description: Phase 1 Lambda function name.
+    Value: !Ref ApiFunction
+
+  TestWiredFunctionLogGroupName:
+    Description: CloudWatch log group for sanitized Lambda logs.
+    Value: !Ref ApiFunctionLogGroup
+
+  TestWiredApiAccessLogGroupName:
+    Description: CloudWatch log group for bounded API access metadata.
+    Value: !Ref ApiAccessLogGroup
+
+  DeployedReleaseCommit:
+    Description: Exact source commit supplied at deployment.
+    Value: !Ref ReleaseCommit
+
+  ConfiguredPublicOrigins:
+    Description: Exact browser origin allowlist configured for CORS.
+    Value: !Ref PublicAllowedOrigins

@@ -15,8 +15,9 @@
 ## Security and privacy
 
 - [ ] Full history and working tree pass secret scanning.
-- [ ] No AWS account IDs, credential paths, wallet seeds, connection strings, or
-  private endpoints appear in the public tree.
+- [ ] No live AWS account IDs, credentials, wallet seeds, connection strings, or
+  private endpoints appear in the public tree; example configuration contains
+  placeholders only.
 - [ ] All test data is synthetic.
 - [ ] Browser bundle contains no database, Managed MCP, wallet, or secret values.
 - [ ] Live roles are least privilege and environment-marker verification passes.

@@ -65,6 +65,54 @@
       "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
       "gitBlobSha": "069bb09d62a2c80debfb330659dbaa913b42ac09",
       "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/LICENSE"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_01.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_01.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "7b4e72f0ec2b0238493e0795d20ada2e885684e9",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_01.png"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_02.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_02.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "d1cf2c2db034590bc41798d56cf1b47def127945",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_02.png"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_03.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_03.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "c7de9d000fa3a89dca48bccfd275e5c854a673fe",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_03.png"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_04.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_04.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "1546a0853c0b0bab691f8fbb4d3811bbe4068d54",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_04.png"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_05.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_05.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "6f8c450f5d5cda80ee7c7f7bbfc9276250296753",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_05.png"
+    },
+    {
+      "destination": "docs/media/vision-deck/slide_06.png",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "docs/media/slides/slide_06.png",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "2f80a5aa94c7d8a25f76abec1575b930a97abdce",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/docs/media/slides/slide_06.png"
     }
   ]
 }

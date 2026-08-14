@@ -10,20 +10,30 @@ public issue. Contact the repository owner through the verified security contact
 published in the GitHub repository profile. A dedicated disclosure address will
 be added before the public demo is opened.
 
-## Design boundaries
+## Current Phase 1 safeguards
 
-- Test fixtures only, no real deeds, mortgages, people, or government records.
-- No secret or private witness is committed to Git.
-- Secrets are resolved at runtime from AWS Secrets Manager.
-- Browser code never receives database, Managed MCP, wallet, or decryption
-  credentials.
-- The Lambda database role is least privilege and is separate from the migrator
-  and read-only evidence roles.
-- Protected material is never sent to an embedding model.
-- Authorization occurs before protected decryption or disclosure.
-- API operations are allowlisted, size-bounded, rate-limited, and idempotent.
-- Logs contain commitments and receipt identifiers, not protected payloads.
-- Live provider failure is visible and never silently replaced by a mock.
+- Test fixtures only; no real records.
+- No secret, private witness, provider credential, database role, wallet, or
+  decryption key is deployed or committed.
+- Browser code accepts only a public API base and uses no ambient credentials.
+- Lambda exposes fixed synthetic routes, accepts bounded exact shapes, and fails closed.
+- POST requests enforce only a syntax-valid `Idempotency-Key`; persistent
+  duplicate detection is not implemented.
+- CORS is exact-origin, throttling is configured, logs have short retention,
+  and the Lambda role is log-only.
+- Error logs contain a fixed code and request ID; access logs contain metadata only.
+- No protected material is decrypted, embedded, persisted, or returned.
+- Valid operational requests return `503 LIVE_PROVIDERS_NOT_CONNECTED` with no mock fallback.
+
+## Required before live providers
+
+- Use AWS Secrets Manager for runtime credentials.
+- Create distinct least-privilege CockroachDB migrator, runtime, and read-only roles.
+- Enforce authorization before decryption or disclosure.
+- Keep protected source material out of embedding and inference.
+- Implement hashed persistent idempotency.
+- Persist only sanitized commitments, receipt IDs, and bounded metadata.
+- Make provider failure visible and never silently substitute a mock fallback.
 
 ## Non-goals
 

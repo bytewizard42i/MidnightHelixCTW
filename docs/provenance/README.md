@@ -1,8 +1,9 @@
 # Provenance manifests
 
-This directory records the source and SHA-256 digest of every imported baseline,
-fixture, and selected media asset. Static manifests will be generated after the
-curated files are copied into this standalone repository.
+This directory records provenance for every imported baseline, fixture, and selected
+media asset. `imported-sources.json` records source repositories, paths, refs, and
+Git blob identifiers. `imported-files.sha256` records the SHA-256 digest of each
+curated destination file after import.
 
 The manifests support three goals:
 
