@@ -1,0 +1,13 @@
+{
+  "schema": "mhelix/mock-authority/v1",
+  "evidence": "MOCK",
+  "authorityId": "authority:testtown:quarry-county-recorder",
+  "displayName": "Quarry County Recorder",
+  "jurisdiction": "TESTTOWN-PA",
+  "recordClasses": [
+    "DEED",
+    "LIEN",
+    "MORTGAGE_SATISFACTION"
+  ],
+  "synthetic": true
+}

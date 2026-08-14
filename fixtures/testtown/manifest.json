@@ -1,0 +1,20 @@
+{
+  "schema": "mhelix/testtown-snapshot-manifest/v1",
+  "sourceRepository": "https://github.com/bytewizard42i/TestTownDIDz",
+  "sourceCommit": "f145c07b3f8abf62c04e1532f67118b5a5aa66b9",
+  "syntheticDataOnly": true,
+  "sourceFiles": [
+    "source/edgar-morrow.json",
+    "source/morrow-family-farmhouse.json"
+  ],
+  "derivedFiles": [
+    "derived/mock-owner-didz.json",
+    "derived/mock-agenticdid.json",
+    "derived/mock-unauthorized-agent.json",
+    "derived/mock-rwaz-property.json",
+    "derived/quarry-county-recorder.json",
+    "derived/property-evidence/deed-record.json",
+    "derived/property-evidence/mortgage-satisfaction.json",
+    "derived/property-evidence/title-status.json"
+  ]
+}

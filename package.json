@@ -1,0 +1,15 @@
+{
+  "name": "midnight-helixctw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HelixCTW TestWired private agent memory on CockroachDB, AWS, and Midnight.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/verify-fixtures.mjs && node scripts/verify-doc-links.mjs",
+    "verify": "node scripts/verify-fixtures.mjs && node scripts/verify-doc-links.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

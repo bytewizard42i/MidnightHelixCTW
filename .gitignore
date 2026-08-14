@@ -1,0 +1,35 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+.aws-sam/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.seed
+secrets/
+.secrets/
+
+# Midnight and wallet state
+.midnight/
+wallet-state/
+private-state/
+
+# Large raw media stays local. Curated PNG assets under docs/media are tracked.
+*.mp4
+*.mov
+*.m4a
+*.mp3
+*.wav
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

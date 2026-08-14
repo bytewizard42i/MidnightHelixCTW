@@ -1,0 +1,16 @@
+# SHA-256 manifest for curated imported files.
+# Paths are relative to the MidnightHelixCTW repository root.
+15834fa06c822c1a96589f072d3c866e9c64a3c96bbaf169f9c6d457c341bc05  LICENSE
+838364216c624853f4c8d38f3cc186671ceca893378aae41b669b304271569b3  fixtures/testtown/source/edgar-morrow.json
+fcd013f30333ab45fee9306dde4c89582fcceafb9819c29ab50678123755f9b9  fixtures/testtown/source/morrow-family-farmhouse.json
+107c720f3dc8725aafdca71cf9f2ea0285e8613c86120981463cf831b95c3ab3  packages/helix-adapter/src/upstream-baseline/backend.ts
+3371ea758ac117f31bab22b4e42f975c51d8faf34ddfe6804239d0a933fb6b19  packages/helix-adapter/src/upstream-baseline/gateway.ts
+82fe19a4b51926af391d0f4114acf6a7a15c3c8184e311ae35390ec8ac648498  packages/helix-adapter/src/upstream-baseline/index.ts
+95c0a2ec2982e946f981ef4971dbee0dbc17fa68911823cc4bc6a11e60b1ae88  packages/helix-adapter/sql/upstream-baseline/001_init.sql
+14ab36d95648abe1ba233065cd48d8d8308a5f3eadb21e648c2d7a5cec0c457d  packages/helix-adapter/test/upstream-baseline/adapter-helixctw.test.ts
+20e62d060a7986ebb4bf5a382a5378fa73976c1055e253efc540e647ebb0836b  docs/media/vision-deck/slide_01.png
+e4bb72756dc4d0211e0dd706247b3c2dca1aeedcb5d6716870e30b7e5c9c5f0f  docs/media/vision-deck/slide_02.png
+d3e9f9254324e19db7c863742dab234fd16257e1f936abaf1ea17365c048c621  docs/media/vision-deck/slide_03.png
+26ec806372ac0b1f8f4bae35fc9b8df5debd17736968e44e419d281f6c2d9906  docs/media/vision-deck/slide_04.png
+1aa267650e292a7766d957d0adfcd5b35850aea4a85662fd7b2ab6c516193b51  docs/media/vision-deck/slide_05.png
+10e1c9093230b17c13f8524a15414b666c970010899626d27109134d71f67075  docs/media/vision-deck/slide_06.png

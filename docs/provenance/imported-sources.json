@@ -1,0 +1,70 @@
+{
+  "schema": "mhelixctw/provenance/v1",
+  "generatedAt": "2026-08-13",
+  "entries": [
+    {
+      "destination": "fixtures/testtown/source/edgar-morrow.json",
+      "repository": "bytewizard42i/TestTownDIDz",
+      "sourcePath": "dossiers/citizens/edgar-morrow/dossier.json",
+      "ref": "f145c07b3f8abf62c04e1532f67118b5a5aa66b9",
+      "gitBlobSha": "233ad0fdb0b52de0d40711ad26f556cc0857f91d",
+      "sourceUrl": "https://github.com/bytewizard42i/TestTownDIDz/blob/f145c07b3f8abf62c04e1532f67118b5a5aa66b9/dossiers/citizens/edgar-morrow/dossier.json"
+    },
+    {
+      "destination": "fixtures/testtown/source/morrow-family-farmhouse.json",
+      "repository": "bytewizard42i/TestTownDIDz",
+      "sourcePath": "dossiers/assets/morrow-family-farmhouse/dossier.json",
+      "ref": "f145c07b3f8abf62c04e1532f67118b5a5aa66b9",
+      "gitBlobSha": "f4d9c3010d83b43b3f0d87e8555bbd285071ced4",
+      "sourceUrl": "https://github.com/bytewizard42i/TestTownDIDz/blob/f145c07b3f8abf62c04e1532f67118b5a5aa66b9/dossiers/assets/morrow-family-farmhouse/dossier.json"
+    },
+    {
+      "destination": "packages/helix-adapter/src/upstream-baseline/backend.ts",
+      "repository": "bytewizard42i/DIDzMonolith",
+      "sourcePath": "didz-kernel/packages/adapter-helixctw/src/backend.ts",
+      "ref": "ec1d040d16acbcbd0b607e58ee6fa753e8895e54",
+      "gitBlobSha": "b7cd09484941ecc8705e149b684f8e42610f7a02",
+      "sourceUrl": "https://github.com/bytewizard42i/DIDzMonolith/blob/ec1d040d16acbcbd0b607e58ee6fa753e8895e54/didz-kernel/packages/adapter-helixctw/src/backend.ts"
+    },
+    {
+      "destination": "packages/helix-adapter/src/upstream-baseline/gateway.ts",
+      "repository": "bytewizard42i/DIDzMonolith",
+      "sourcePath": "didz-kernel/packages/adapter-helixctw/src/gateway.ts",
+      "ref": "ec1d040d16acbcbd0b607e58ee6fa753e8895e54",
+      "gitBlobSha": "bdf82c4750426ade73ce4b8d4b05a6c08478aeb9",
+      "sourceUrl": "https://github.com/bytewizard42i/DIDzMonolith/blob/ec1d040d16acbcbd0b607e58ee6fa753e8895e54/didz-kernel/packages/adapter-helixctw/src/gateway.ts"
+    },
+    {
+      "destination": "packages/helix-adapter/src/upstream-baseline/index.ts",
+      "repository": "bytewizard42i/DIDzMonolith",
+      "sourcePath": "didz-kernel/packages/adapter-helixctw/src/index.ts",
+      "ref": "ec1d040d16acbcbd0b607e58ee6fa753e8895e54",
+      "gitBlobSha": "71c432f0648d04c55e0c53c1eb6ad2515a8c5af7",
+      "sourceUrl": "https://github.com/bytewizard42i/DIDzMonolith/blob/ec1d040d16acbcbd0b607e58ee6fa753e8895e54/didz-kernel/packages/adapter-helixctw/src/index.ts"
+    },
+    {
+      "destination": "packages/helix-adapter/sql/upstream-baseline/001_init.sql",
+      "repository": "bytewizard42i/DIDzMonolith",
+      "sourcePath": "didz-kernel/packages/adapter-helixctw/sql/001_init.sql",
+      "ref": "ec1d040d16acbcbd0b607e58ee6fa753e8895e54",
+      "gitBlobSha": "d9ec6d3849244073505ba698578379f27a68cd14",
+      "sourceUrl": "https://github.com/bytewizard42i/DIDzMonolith/blob/ec1d040d16acbcbd0b607e58ee6fa753e8895e54/didz-kernel/packages/adapter-helixctw/sql/001_init.sql"
+    },
+    {
+      "destination": "packages/helix-adapter/test/upstream-baseline/adapter-helixctw.test.ts",
+      "repository": "bytewizard42i/DIDzMonolith",
+      "sourcePath": "didz-kernel/packages/adapter-helixctw/test/adapter-helixctw.test.ts",
+      "ref": "ec1d040d16acbcbd0b607e58ee6fa753e8895e54",
+      "gitBlobSha": "044bf1f1323b6c1b38a2443f316eea6085ad6a81",
+      "sourceUrl": "https://github.com/bytewizard42i/DIDzMonolith/blob/ec1d040d16acbcbd0b607e58ee6fa753e8895e54/didz-kernel/packages/adapter-helixctw/test/adapter-helixctw.test.ts"
+    },
+    {
+      "destination": "LICENSE",
+      "repository": "bytewizard42i/HelixCTW",
+      "sourcePath": "LICENSE",
+      "ref": "b0ed8ccd7c1b95661a6470466eaef269cc4cc07a",
+      "gitBlobSha": "069bb09d62a2c80debfb330659dbaa913b42ac09",
+      "sourceUrl": "https://github.com/bytewizard42i/HelixCTW/blob/b0ed8ccd7c1b95661a6470466eaef269cc4cc07a/LICENSE"
+    }
+  ]
+}

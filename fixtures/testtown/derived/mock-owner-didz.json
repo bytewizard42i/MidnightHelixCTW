@@ -1,0 +1,10 @@
+{
+  "schema": "mhelix/mock-didz/v1",
+  "evidence": "MOCK",
+  "sourceCitizenSlug": "edgar-morrow",
+  "canonicalDidz": "didz:testtown:person:edgar-morrow",
+  "pairwisePresentationDid": "didz:testtown:pairwise:mhelix:edgar-morrow",
+  "principalCommitment": "sha256:synthetic-edgar-morrow-principal-v1",
+  "displayName": "Edgar Morrow",
+  "synthetic": true
+}

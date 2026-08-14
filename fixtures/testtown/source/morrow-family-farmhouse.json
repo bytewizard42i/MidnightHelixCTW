@@ -1,0 +1,18 @@
+{
+  "schema": "testtown/dossier/v0.1",
+  "category": "asset",
+  "slug": "morrow-family-farmhouse",
+  "displayName": "Morrow family farmhouse, 44 Quarry Road",
+  "honesty": {
+    "role": "AUTHENTIC",
+    "fraudMechanism": null
+  },
+  "assetKind": "real-estate",
+  "identityAnchor": {
+    "kind": "parcel-id",
+    "value": "TT-PARCEL-0917-114"
+  },
+  "ownerCitizenSlug": "edgar-morrow",
+  "papers": [],
+  "documents": []
+}

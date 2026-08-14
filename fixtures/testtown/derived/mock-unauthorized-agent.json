@@ -1,0 +1,11 @@
+{
+  "schema": "mhelix/mock-agenticdid/v1",
+  "evidence": "MOCK",
+  "agentDidz": "didz:testtown:agent:unknown-listing-bot",
+  "delegatorDidz": null,
+  "grantId": null,
+  "allowedActions": [],
+  "resource": "rwaz:testtown:property:morrow-family-farmhouse",
+  "protectedFieldsAllowed": [],
+  "synthetic": true
+}

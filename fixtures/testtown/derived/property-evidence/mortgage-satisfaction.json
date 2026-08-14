@@ -1,0 +1,12 @@
+{
+  "schema": "mhelix/synthetic-property-evidence/v1",
+  "recordId": "record:testtown:morrow:mortgage-satisfaction:2025-0914",
+  "recordClass": "MORTGAGE_SATISFACTION",
+  "authorityId": "authority:testtown:quarry-county-recorder",
+  "objectId": "rwaz:testtown:property:morrow-family-farmhouse",
+  "relatedInstrument": "instrument:testtown:morrow:mortgage:2019-0422",
+  "recordedAt": "2025-09-14T10:15:00Z",
+  "status": "SATISFIED",
+  "privateNarrative": "Fictional satisfaction record for the MHelixCTW public test environment.",
+  "synthetic": true
+}

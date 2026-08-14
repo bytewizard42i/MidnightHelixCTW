@@ -1,0 +1,14 @@
+{
+  "schema": "mhelix/mock-rwaz/v1",
+  "evidence": "MOCK",
+  "objectId": "rwaz:testtown:property:morrow-family-farmhouse",
+  "sourceAssetSlug": "morrow-family-farmhouse",
+  "identityAnchor": {
+    "kind": "parcel-id",
+    "value": "TT-PARCEL-0917-114"
+  },
+  "ownerCommitment": "sha256:synthetic-edgar-morrow-owner-v1",
+  "publicDescription": "A fictional TestTown farmhouse identified by a synthetic parcel record.",
+  "jurisdiction": "TESTTOWN-PA",
+  "synthetic": true
+}

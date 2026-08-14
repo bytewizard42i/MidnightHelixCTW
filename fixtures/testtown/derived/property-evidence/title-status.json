@@ -1,0 +1,11 @@
+{
+  "schema": "mhelix/synthetic-property-predicate/v1",
+  "recordId": "record:testtown:morrow:title-status:2026-0813",
+  "objectId": "rwaz:testtown:property:morrow-family-farmhouse",
+  "asOf": "2026-08-13T12:00:00Z",
+  "openEncumbranceRecordIds": [],
+  "predicate": "property.is_unencumbered",
+  "expectedResult": true,
+  "publicSafeSummary": "The fictional property has a recorded deed and a satisfied synthetic mortgage, with no open synthetic encumbrance in the test manifest.",
+  "synthetic": true
+}

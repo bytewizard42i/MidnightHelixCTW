@@ -1,0 +1,12 @@
+{
+  "schema": "mhelix/synthetic-property-evidence/v1",
+  "recordId": "record:testtown:morrow:deed:2019-0421",
+  "recordClass": "DEED",
+  "authorityId": "authority:testtown:quarry-county-recorder",
+  "objectId": "rwaz:testtown:property:morrow-family-farmhouse",
+  "granteeCommitment": "sha256:synthetic-edgar-morrow-owner-v1",
+  "recordedAt": "2019-04-21T14:30:00Z",
+  "status": "RECORDED",
+  "privateNarrative": "Fictional deed text for the MHelixCTW public test environment.",
+  "synthetic": true
+}
