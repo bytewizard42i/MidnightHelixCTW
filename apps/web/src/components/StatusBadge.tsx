@@ -6,7 +6,11 @@ interface StatusBadgeProps {
 }
 
 function toneForLabel(label: StatusBadgeProps["label"]): string {
-  if (label === "LIVE TESTWIRED" || label === "TESTWIRED") {
+  if (
+    label === "LIVE TESTWIRED" ||
+    label === "REALDEAL TEST" ||
+    label === "TESTWIRED"
+  ) {
     return "live";
   }
   if (label === "MOCK") {

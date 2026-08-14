@@ -12,6 +12,11 @@ read-only health, status, and scenario routes describe the available surface.
 Valid operational requests return `503 LIVE_PROVIDERS_NOT_CONNECTED`, and no
 run, receipt, or predicate result is invented.
 
+When a response is actually emitted by the validated AWS Lambda runtime, only
+its AWS transport provider is `REALDEAL_TEST` and `CONNECTED`. The response keeps
+global deployment evidence `SOURCE_ONLY`, all downstream providers
+`NOT_CONNECTED`, and guided mutations unavailable.
+
 ## Routes
 
 ```text

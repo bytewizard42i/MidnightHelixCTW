@@ -192,6 +192,8 @@ function translatedEvidenceLabel(value: unknown): EvidenceLabel | undefined {
   const translations: Record<string, EvidenceLabel> = {
     LIVE_TESTWIRED: "LIVE TESTWIRED",
     "LIVE TESTWIRED": "LIVE TESTWIRED",
+    REALDEAL_TEST: "REALDEAL TEST",
+    "REALDEAL TEST": "REALDEAL TEST",
     VERIFIED_LOCAL: "VERIFIED LOCAL",
     "VERIFIED LOCAL": "VERIFIED LOCAL",
     MOCK: "MOCK",

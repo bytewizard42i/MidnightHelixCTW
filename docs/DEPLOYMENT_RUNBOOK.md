@@ -111,6 +111,12 @@ Responses use schema `mhelixctw/api/v1`. POST requests require JSON and an
 accept at most 4096 body bytes. Before provider connection, operational routes
 fail closed with `503 LIVE_PROVIDERS_NOT_CONNECTED`.
 
+A response emitted inside the validated AWS Lambda runtime marks only the AWS
+transport provider `REALDEAL_TEST` and `CONNECTED`. The global
+`deploymentEvidence` field remains `SOURCE_ONLY`; every downstream provider,
+guided availability, and mutation stays disconnected until independently
+verified.
+
 ## Step 4, connect the real TestWired path
 
 The public judge workflow must use the deployed services, not an in-memory

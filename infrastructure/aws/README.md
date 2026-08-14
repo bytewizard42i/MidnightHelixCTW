@@ -18,6 +18,11 @@ because the verified account quota requires all 10 current executions to remain
 unreserved. Operational API requests fail closed until later reviewed provider
 adapters are connected.
 
+A response running inside the validated AWS Lambda environment marks only the AWS
+transport row `REALDEAL_TEST` and `CONNECTED`. Global deployment evidence remains
+`SOURCE_ONLY`; CockroachDB, Bedrock, Midnight, Managed MCP, and the fixture
+providers remain disconnected, and mutations remain blocked.
+
 No stack has been deployed from this repository yet.
 
 ## Local validation
@@ -43,7 +48,7 @@ Keep this README open while running the commands below.
 cd /home/js/DIDzMonolith/MidnightHelixCTW
 export AWS_REGION=us-east-1
 export MHELIX_STACK_NAME=mhelixctw-testwired
-export MHELIX_PUBLIC_ALLOWED_ORIGINS=https://main.REPLACE_ME.amplifyapp.com,https://demo.helixctw.com
+export MHELIX_PUBLIC_ALLOWED_ORIGINS=https://main.REPLACE_ME.amplifyapp.com,https://testwired.helixctw.com
 export MHELIX_CONFIRM_AWS_DEPLOY=DEPLOY_MHELIX_TESTWIRED_API
 bash infrastructure/aws/scripts/deploy.sh
 unset MHELIX_CONFIRM_AWS_DEPLOY

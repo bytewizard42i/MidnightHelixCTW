@@ -37,6 +37,12 @@ export const OUTPUT_EVIDENCE_LABELS = [
 export type OutputEvidenceLabel = (typeof OUTPUT_EVIDENCE_LABELS)[number];
 
 /**
+ * Provider rows can expose REALDEAL_TEST only when the current response itself
+ * carries the matching real test-service evidence reference.
+ */
+export type ProviderRuntimeEvidence = ImplementationStage | "REALDEAL_TEST";
+
+/**
  * A privacy invariant for this judge scenario. Public responses return the
  * count, never the protected values. The count must remain zero.
  */
@@ -67,17 +73,27 @@ export interface EvidenceReference {
 }
 
 /**
- * evidence is the provider's current machine stage in API v1. A live receipt,
- * when one exists, belongs in evidenceReference.
+ * evidence is normally the provider's current machine stage. REALDEAL_TEST is
+ * allowed only when this response carries the matching real cloud-service
+ * evidenceReference.
  */
 export interface ProviderStatus {
   readonly id: ProviderId;
   readonly label: string;
   readonly targetMode: ProviderMode;
-  readonly evidence: ImplementationStage;
+  readonly evidence: ProviderRuntimeEvidence;
   readonly connection: ProviderConnection;
   readonly evidenceReference?: EvidenceReference;
   readonly detail?: string;
+}
+
+export interface TransportStatus {
+  readonly providerId: "aws";
+  readonly scope: "AWS_API_GATEWAY_LAMBDA_ONLY";
+  readonly evidence: ProviderRuntimeEvidence;
+  readonly connection: ProviderConnection;
+  readonly downstreamProvidersConnected: false;
+  readonly evidenceReference?: EvidenceReference;
 }
 
 export const MORROW_SCENARIO = {
@@ -127,6 +143,7 @@ export interface ApiResponseBase {
 export interface TestWiredEvidenceFields {
   readonly buildStage: TestWiredBuildStage;
   readonly deploymentEvidence: ImplementationStage;
+  readonly transport: TransportStatus;
 }
 
 export interface ApiError {

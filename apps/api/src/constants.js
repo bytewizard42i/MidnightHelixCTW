@@ -28,10 +28,11 @@ export const ACTIONS = Object.freeze([
 export const RESPONSE_SCHEMA_VERSION = "mhelixctw/api/v1";
 
 /**
- * These are target modes, not evidence claims. Every provider remains
- * SOURCE_ONLY and NOT_CONNECTED until a later integration phase records real
- * execution evidence. Even the mock fixture providers are not called by this
- * Phase 1 transport shell.
+ * These are the fail-closed baseline states. The handler upgrades only the AWS
+ * row after validating that it is executing inside the deployed Lambda
+ * runtime. Every downstream provider remains SOURCE_ONLY and NOT_CONNECTED
+ * until its own reviewed integration records real execution evidence. Even the
+ * mock fixture providers are not called by this Phase 1 transport shell.
  */
 export const PROVIDER_STATES = Object.freeze([
   Object.freeze({

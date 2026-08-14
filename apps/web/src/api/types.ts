@@ -6,6 +6,7 @@ export interface JsonObject {
 
 export type EvidenceLabel =
   | "LIVE TESTWIRED"
+  | "REALDEAL TEST"
   | "VERIFIED LOCAL"
   | "MOCK"
   | "SOURCE ONLY"

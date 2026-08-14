@@ -5,6 +5,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const template = await readFile(new URL("../template.yaml", import.meta.url), "utf8");
+const deployScript = await readFile(new URL("../scripts/deploy.sh", import.meta.url), "utf8");
+const validateLocalScript = await readFile(
+  new URL("../scripts/validate-local.sh", import.meta.url),
+  "utf8",
+);
+const buildScript = await readFile(new URL("../scripts/build.sh", import.meta.url), "utf8");
 
 const expectedRoutes = [
   "Path: /healthz",
@@ -68,6 +74,17 @@ test("template excludes deadline-expanding services", () => {
 
 test("logs have explicit retention and retained teardown behavior", () => {
   assert.equal((template.match(/Type: AWS::Logs::LogGroup/g) ?? []).length, 2);
-  assert.equal((template.match(/DeletionPolicy: Retain/g) ?? []).length, 2);
+  assert.equal((template.match(/DeletionPolicy: RetainExceptOnCreate/g) ?? []).length, 2);
+  assert.equal((template.match(/UpdateReplacePolicy: Retain/g) ?? []).length, 2);
   assert.equal((template.match(/RetentionInDays: !Ref LogRetentionDays/g) ?? []).length, 2);
+});
+
+test("deploy path validates tests, SAM build, and both package scans", () => {
+  assert.match(deployScript, /"\$\{SCRIPT_DIRECTORY\}\/validate-local\.sh"/);
+  assert.match(validateLocalScript, /"\$\{SCRIPT_DIRECTORY\}\/build\.sh"/);
+  assert.doesNotMatch(validateLocalScript, /sam (?:validate|build)|forbidden_file|credential_bearing_file/);
+  assert.match(buildScript, /sam validate --lint/);
+  assert.match(buildScript, /sam build/);
+  assert.match(buildScript, /forbidden_file/);
+  assert.match(buildScript, /credential_bearing_file/);
 });

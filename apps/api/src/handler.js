@@ -11,6 +11,10 @@ import {
 } from "./constants.js";
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
+const AWS_LAMBDA_FUNCTION_NAME_PATTERN = /^[A-Za-z0-9-_]{1,57}-worker$/;
+const AWS_LAMBDA_FUNCTION_VERSION_PATTERN = /^(?:\$LATEST|[1-9][0-9]*)$/;
+const AWS_LAMBDA_RUNTIME_API_PATTERN =
+  /^(?:\[[0-9A-Fa-f:]+\]|[A-Za-z0-9.-]+):[1-9][0-9]{0,4}$/;
 const RESOURCE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const RELEASE_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const REQUEST_IDENTIFIER_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
@@ -46,6 +50,48 @@ function readSafeEnvironmentValue(rawValue, pattern, fallback) {
   }
 
   return rawValue;
+}
+
+/**
+ * Browser input can never promote provider evidence. AWS reserves these
+ * variables in a managed Lambda runtime, while SAM local also supplies some of
+ * them. Requiring the full, internally consistent set and explicitly rejecting
+ * SAM local keeps local tests and emulators at SOURCE_ONLY.
+ */
+function isValidatedAwsLambdaRuntime(configurationValues) {
+  const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
+  const functionMemorySize = Number(process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE);
+  const initializationType = process.env.AWS_LAMBDA_INITIALIZATION_TYPE;
+  const allowedInitializationTypes = new Set([
+    "on-demand",
+    "provisioned-concurrency",
+    "snap-start",
+  ]);
+
+  return (
+    process.env.AWS_SAM_LOCAL?.toLowerCase() !== "true" &&
+    typeof functionName === "string" &&
+    AWS_LAMBDA_FUNCTION_NAME_PATTERN.test(functionName) &&
+    process.env.AWS_LAMBDA_FUNCTION_VERSION !== undefined &&
+    AWS_LAMBDA_FUNCTION_VERSION_PATTERN.test(process.env.AWS_LAMBDA_FUNCTION_VERSION) &&
+    process.env.AWS_LAMBDA_RUNTIME_API !== undefined &&
+    AWS_LAMBDA_RUNTIME_API_PATTERN.test(process.env.AWS_LAMBDA_RUNTIME_API) &&
+    process.env.AWS_EXECUTION_ENV === "AWS_Lambda_nodejs24.x" &&
+    process.env.LAMBDA_TASK_ROOT === "/var/task" &&
+    process.env.LAMBDA_RUNTIME_DIR === "/var/runtime" &&
+    Number.isInteger(functionMemorySize) &&
+    functionMemorySize >= 128 &&
+    functionMemorySize <= 10_240 &&
+    allowedInitializationTypes.has(initializationType) &&
+    process.env.AWS_LAMBDA_LOG_GROUP_NAME === `/aws/lambda/${functionName}` &&
+    typeof process.env.AWS_LAMBDA_LOG_STREAM_NAME === "string" &&
+    process.env.AWS_LAMBDA_LOG_STREAM_NAME.length > 0 &&
+    process.env.AWS_LAMBDA_LOG_STREAM_NAME.length <= 512 &&
+    configurationValues.region === "us-east-1" &&
+    process.env.AWS_DEFAULT_REGION === configurationValues.region &&
+    configurationValues.releaseCommit !== "UNSET" &&
+    configurationValues.publicAllowedOrigins.length > 0
+  );
 }
 
 function readConfiguration() {
@@ -85,6 +131,18 @@ function readConfiguration() {
     }
   }
 
+  const releaseCommit = readSafeEnvironmentValue(
+    process.env.MHELIX_RELEASE_COMMIT,
+    RELEASE_COMMIT_PATTERN,
+    "UNSET",
+  );
+  const region = readSafeEnvironmentValue(process.env.AWS_REGION, REGION_PATTERN, "UNSET");
+  const validatedAwsLambdaRuntime = isValidatedAwsLambdaRuntime({
+    publicAllowedOrigins,
+    releaseCommit,
+    region,
+  });
+
   return {
     publicAllowedOrigins,
     maxRequestBytes: readBoundedInteger(
@@ -99,14 +157,19 @@ function readConfiguration() {
       512,
       65_536,
     ),
-    releaseCommit: readSafeEnvironmentValue(
-      process.env.MHELIX_RELEASE_COMMIT,
-      RELEASE_COMMIT_PATTERN,
-      "UNSET",
-    ),
-    region: readSafeEnvironmentValue(process.env.AWS_REGION, REGION_PATTERN, "UNSET"),
+    releaseCommit,
+    region,
     buildStage: "TESTWIRED",
+    // This field describes the integrated deployment as a whole. It remains
+    // SOURCE_ONLY because the downstream providers are still disconnected.
     deploymentEvidence: "SOURCE_ONLY",
+    transport: {
+      providerId: "aws",
+      scope: "AWS_API_GATEWAY_LAMBDA_ONLY",
+      evidence: validatedAwsLambdaRuntime ? "REALDEAL_TEST" : "SOURCE_ONLY",
+      connection: validatedAwsLambdaRuntime ? "CONNECTED" : "NOT_CONNECTED",
+      downstreamProvidersConnected: false,
+    },
   };
 }
 
@@ -142,8 +205,45 @@ function getRequestPath(event) {
   return typeof candidatePath === "string" ? candidatePath : "";
 }
 
-function cloneProviderStates() {
-  return PROVIDER_STATES.map((providerState) => ({ ...providerState }));
+function buildTransportStatus(configuration, requestId) {
+  if (configuration.transport.evidence !== "REALDEAL_TEST") {
+    return { ...configuration.transport };
+  }
+
+  return {
+    ...configuration.transport,
+    evidenceReference: {
+      label: "REALDEAL_TEST",
+      provider: "aws",
+      requestId,
+    },
+  };
+}
+
+function cloneProviderStates(configuration, requestId) {
+  return PROVIDER_STATES.map((providerState) => {
+    if (providerState.id !== "aws") {
+      return { ...providerState };
+    }
+
+    const awsProviderState = {
+      ...providerState,
+      evidence: configuration.transport.evidence,
+      connection: configuration.transport.connection,
+    };
+    if (configuration.transport.evidence !== "REALDEAL_TEST") {
+      return awsProviderState;
+    }
+
+    return {
+      ...awsProviderState,
+      evidenceReference: {
+        label: "REALDEAL_TEST",
+        provider: "aws",
+        requestId,
+      },
+    };
+  });
 }
 
 function buildBasePayload(ok, requestId) {
@@ -413,7 +513,7 @@ function validateActionBody(requestBody) {
   assertCanonicalAgentIdentifier(requestBody.agentDidz);
 }
 
-function unavailableOperationPayload(requestId) {
+function unavailableOperationPayload(configuration, requestId) {
   return {
     ...buildBasePayload(false, requestId),
     error: {
@@ -422,7 +522,7 @@ function unavailableOperationPayload(requestId) {
         "This Phase 1 API shell does not execute or persist judge operations until the reviewed live providers are connected.",
       retryable: false,
     },
-    providers: cloneProviderStates(),
+    providers: cloneProviderStates(configuration, requestId),
   };
 }
 
@@ -519,6 +619,7 @@ async function dispatchRequest(event, configuration, requestId) {
         service: "midnight-helixctw-api",
         buildStage: configuration.buildStage,
         deploymentEvidence: configuration.deploymentEvidence,
+        transport: buildTransportStatus(configuration, requestId),
         handler: "READY",
         dependenciesConnected: false,
         region: configuration.region,
@@ -527,7 +628,7 @@ async function dispatchRequest(event, configuration, requestId) {
           maxRequestBytes: configuration.maxRequestBytes,
           maxResponseBytes: configuration.maxResponseBytes,
         },
-        providers: cloneProviderStates(),
+        providers: cloneProviderStates(configuration, requestId),
       },
     };
   }
@@ -539,12 +640,13 @@ async function dispatchRequest(event, configuration, requestId) {
         ...buildBasePayload(true, requestId),
         buildStage: configuration.buildStage,
         deploymentEvidence: configuration.deploymentEvidence,
+        transport: buildTransportStatus(configuration, requestId),
         releaseCommit: configuration.releaseCommit,
         currentAvailability: "NOT_CONNECTED",
         readyForMutations: false,
         writeOperations: "BLOCKED_UNTIL_CONNECTED",
         actions: [...ACTIONS],
-        providers: cloneProviderStates(),
+        providers: cloneProviderStates(configuration, requestId),
       },
     };
   }
@@ -556,6 +658,7 @@ async function dispatchRequest(event, configuration, requestId) {
         ...buildBasePayload(true, requestId),
         buildStage: configuration.buildStage,
         deploymentEvidence: configuration.deploymentEvidence,
+        transport: buildTransportStatus(configuration, requestId),
         scenarios: [
           {
             ...CANONICAL_SCENARIO,
@@ -567,7 +670,7 @@ async function dispatchRequest(event, configuration, requestId) {
               "The underlying deed and mortgage text must never be returned by this API.",
           },
         ],
-        providers: cloneProviderStates(),
+        providers: cloneProviderStates(configuration, requestId),
       },
     };
   }
@@ -575,7 +678,7 @@ async function dispatchRequest(event, configuration, requestId) {
   if (resolvedRoute.name === "receipt") {
     return {
       statusCode: 503,
-      payload: unavailableOperationPayload(requestId),
+      payload: unavailableOperationPayload(configuration, requestId),
     };
   }
 
@@ -592,7 +695,7 @@ async function dispatchRequest(event, configuration, requestId) {
 
   return {
     statusCode: 503,
-    payload: unavailableOperationPayload(requestId),
+    payload: unavailableOperationPayload(configuration, requestId),
   };
 }
 
