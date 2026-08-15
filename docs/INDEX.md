@@ -15,7 +15,7 @@ ledger.
 | Developer | [Web application](../apps/web/README.md) and [API application](../apps/api/README.md) | [Protocol contracts](../packages/protocol-types/src/testwired-contracts.ts), [mock pillars](../packages/mock-pillars/README.md), and [fixtures](../fixtures/testtown/README.md) |
 | Deployment operator | [Deployment runbook](DEPLOYMENT_RUNBOOK.md) | [Security policy](../SECURITY.md), then the [publication checklist](PUBLICATION_CHECKLIST.md) |
 | Eligibility or media reviewer | [Pre-existing work disclosure](../PREEXISTING_WORK.md) | [Media rights](../MEDIA_RIGHTS.md), [provenance](provenance/README.md), and [media review](media/CLAIM_REVIEW.md) |
-| Current-work reviewer | [August 14 work log](WORK_LOG_2026-08-14.md) | [Implementation status](IMPLEMENTATION_STATUS.md), including the [first AWS create attempt](IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt) |
+| Current-work reviewer | [August 14 work log](WORK_LOG_2026-08-14.md) | [Implementation status](IMPLEMENTATION_STATUS.md), including the [first AWS create attempt](IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt), and the [sanitized rollback archive](archive/aws/2026-08-14-first-create-rollback.md) |
 
 ## Read the truth labels first
 
@@ -46,7 +46,7 @@ This table is navigation, not a second truth ledger. If it conflicts with
 | Public source and fixtures | Standalone source, licensing, curated synthetic TestTown fixtures, repository checks, and disclosures are present. | Repeat final source, link, ownership, and secret checks at the release commit. |
 | Judge web application | The Phase 1 interface source and local tests exist. Controls remain unavailable while the API reports that mutations are not ready. | Publish the browser URL, connect the generated API URL, and run signed-out desktop and mobile flows. |
 | API application | A bounded, dependency-free Lambda handler implements the eight fixed routes below. Read-only routes report status; operational routes fail closed while providers are disconnected. | Deploy API Gateway and Lambda, capture CloudWatch request evidence, and run read-only smoke checks. |
-| AWS infrastructure | A sanitized Serverless Application Model stack and operator scripts exist. The first create rolled back before an endpoint; the staged source fix has not been redeployed. | Review the fix, deploy deliberately, and record the generated AWS URL and non-secret runtime evidence. |
+| AWS infrastructure | A sanitized Serverless Application Model stack and operator scripts exist. The failed first-create stack was removed after rollback verification; corrective source is published on `main` but has not been redeployed. | Review the fix, deploy deliberately, and record the generated AWS URL and non-secret runtime evidence. |
 | Shared protocol contracts | TestWired stages, provider states, Morrow scenario identifiers, actions, responses, receipts, and the zero-protected-field invariant are typed and source-tested. | Use the shared contract at each integration boundary and keep the browser and Lambda payloads aligned. |
 | DIDz, AgenticDID, and RWAz | Synthetic fixtures and explicit `MOCK` boundaries exist; Phase 1 reports their callable connections as `NOT_CONNECTED`. | Implement and connect only the narrow deterministic provider interfaces, with denial tests. |
 | CockroachDB, Bedrock, Midnight, and Managed MCP | Their intended boundaries and promotion evidence are documented. They are not represented as connected by Phase 1. | Connect and verify each provider separately, recording sanitized request, query, proof, or receipt evidence. |
@@ -69,6 +69,9 @@ This table is navigation, not a second truth ledger. If it conflicts with
   evidence required to promote every capability.
 - [WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md): dated improvements, failed
   first AWS create, source fix, local verification checkpoints, and limitations.
+- [Sanitized first-create rollback archive](archive/aws/2026-08-14-first-create-rollback.md):
+  ordered failure, deletion, retained-tooling, and corrective-source evidence
+  without account-specific identifiers.
 
 ### Deployment, security, and publication
 

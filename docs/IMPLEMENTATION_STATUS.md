@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
 This file is the public truth ledger for MidnightHelixCTW. Update it whenever a
 provider, test, deployment, or evidence claim changes.
@@ -62,15 +62,20 @@ This was a first-create failure, not an update rollback of a previously
 known-good application stack.
 
 Post-rollback inspection verified that the application Lambda, API, IAM role,
-and application log resources were removed. The `ROLLBACK_COMPLETE` stack
-record remains. The AWS SAM managed packaging stack and bucket also remain as
-tool-managed packaging infrastructure; neither is evidence that the application
-deployed.
+and application log resources were removed. Deletion verification on
+2026-08-15 confirmed that the failed `mhelixctw-testwired` stack is absent and
+that no matching application APIs, Lambda functions, or Lambda log groups
+remain. The `aws-sam-cli-managed-default` packaging stack remains
+`CREATE_COMPLETE` as tool-managed packaging infrastructure; it is not evidence
+that the application deployed. The ordered sanitized record is preserved in the
+[first-create rollback archive](archive/aws/2026-08-14-first-create-rollback.md).
 
-A source fix is staged locally, and a built-template contract now checks the
-transformed server URL and CORS object. No redeployment has succeeded. AWS
-Lambda and API Gateway therefore remain `SOURCE_ONLY` until a generated public
-URL and runtime evidence pass the promotion checklist.
+Corrective source was published to `main` in commit
+`069826cd7226c99ef3f4d8f454160db0581d5aed`, and a built-template contract now
+checks the transformed server URL and CORS object. No redeployment has
+succeeded. AWS Lambda and API Gateway therefore remain `SOURCE_ONLY` until a
+generated public URL and runtime evidence pass the promotion checklist.
+
 ### 2026-08-14 guided UI and response-evidence hardening
 
 The judge-interface source now includes an explicit guided-demo start, a sticky
