@@ -62,12 +62,22 @@ and must not own the schema or its objects. Those owner, definition, and
 privilege checks are required activation evidence and are not implemented by
 this source migration.
 
-This repository does not yet include a driver bootstrap or migration command.
-The migration is source-only until a reviewed migrator applies it, records its
-checksum, installs the marker, and a real CockroachDB query produces sanitized
-evidence. The Lambda runtime will eventually receive only a named AWS (Amazon Web
-Services) Secrets Manager reference and narrow data permissions, never schema
-ownership or plaintext connection material in the browser or repository.
+This repository intentionally does not include a deployed driver bootstrap or a
+general migration command. Migration `001_testwired_memory_core.sql` was
+independently applied on 2026-08-15 to database and schema `mhelix_testwired`.
+It created 10 empty tables owned by `mhelix_migrator`. The `mhelix_migrator`
+and `mhelix_runtime` users do not inherit `admin`. The runtime user has database
+`CONNECT`, schema `USAGE`, and `SELECT` only on
+`mhelix_environment_markers`; `SELECT` on `mhelix_runs` is denied as intended.
+
+This is `LIVE TESTWIRED` foundation evidence only. The migration-ledger and
+environment-marker rows have not been inserted, and the deployed AWS (Amazon
+Web Services) Lambda transport has no database bootstrap. The CockroachDB
+application provider remains `NOT_CONNECTED`; persistent memory, vector
+retrieval, and Managed MCP (Model Context Protocol) remain unproven and planned.
+The Lambda runtime will eventually receive only a named AWS (Amazon Web Services)
+Secrets Manager reference and narrow data permissions, never schema ownership
+or plaintext connection material in the browser or repository.
 
 ## Canonical TestWired environment marker
 
@@ -105,6 +115,9 @@ The canonical SHA-256 (Secure Hash Algorithm 256-bit) commitment is:
 ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198
 ```
 
+The canonical marker source was committed at `48e85b4`. The digest above is the
+expected public drift-evidence value; no corresponding live marker row exists.
+
 The commitment is public deterministic configuration-drift evidence. It is not
 a secret, authentication mechanism, signature, proof of writer identity, proof
 that the migration executed, or proof of persistence, vector retrieval,
@@ -124,3 +137,19 @@ Do not use `UPSERT` or `ON CONFLICT` to conceal a pre-existing ledger or marker
 row. A conflict is a fail-closed review event. Do not insert either row until
 the source contract and deterministic tests are committed at the release being
 activated.
+
+The reviewed activation source lives in `database/activation/`:
+
+- `001_testwired_marker_activation.sql` inserts the migration-ledger row and
+  the environment-marker row in one plain-INSERT transaction.
+- `verify_marker_activation.sql` reads both rows back using boolean
+  comparisons only, so a shareable evidence transcript never contains the
+  stored commitment or checksum bytes.
+
+Both files are projections of the canonical contract in
+`apps/api/src/environment-marker.js`. The test
+`apps/api/test/marker-activation-sql.test.mjs` enforces that agreement, the
+single-transaction plain-INSERT rule, and the no-echo rule. Committing these
+files is source evidence only; only a separately authenticated
+`mhelix_migrator` session may apply them, and the read-back booleans plus a
+sanitized transcript are the activation evidence.

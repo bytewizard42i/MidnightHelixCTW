@@ -3,15 +3,21 @@
 ## Product boundary
 
 MHelixCTW is designed as the TestWired, standalone edition of HelixCTW. Its
-target flow demonstrates HelixCTW as the memory and data layer for DIDzM while
-keeping the other DIDzM pillars as explicit synthetic providers.
+target flow demonstrates HelixCTW as the memory and data layer for DIDzM (DIDzMonolith) while
+keeping the other DIDzM (DIDzMonolith) pillars as explicit synthetic providers.
 
-> **Current topology, 2026-08-14:** The judge UI and AWS infrastructure exist as
-> source. No public UI or API endpoint is verified. AWS Lambda and API Gateway
-> remain `SOURCE_ONLY`; CockroachDB, Bedrock, Midnight, reconstruction, and
-> Managed MCP remain `PLANNED`; all callable providers remain `NOT_CONNECTED`.
-> The topology below is the target design, not evidence of current connectivity.
-> See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+> **Current topology, 2026-08-15:** The judge UI (User Interface) and AWS
+> (Amazon Web Services) API (Application Programming Interface) Gateway and
+> Lambda transport are live. CockroachDB has a `LIVE TESTWIRED` database and
+> schema foundation: migration 001 was applied, 10 empty tables are owned by
+> `mhelix_migrator`, and least-privilege runtime access and denial were verified.
+> The read-only probe remains `SOURCE ONLY`; the migration-ledger and marker rows
+> are absent, and the deployed Lambda has no database bootstrap. The CockroachDB
+> application provider remains `NOT_CONNECTED`; persistent memory, vector
+> retrieval, and Managed MCP (Model Context Protocol) remain unproven and
+> planned. Bedrock, Midnight, and reconstruction remain `PLANNED` and
+> `NOT_CONNECTED`. The topology below is the target design. See
+> [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 The repository is designed around one property question:
 
@@ -73,6 +79,31 @@ Vector similarity locates candidate memory. It never decides access or truth.
 Exact relational state and the current provider evidence determine what may be
 returned.
 
+#### Verified CockroachDB foundation boundary
+
+On 2026-08-15, migration `001_testwired_memory_core.sql` was applied to database
+and schema `mhelix_testwired`. It created 10 empty tables owned by
+`mhelix_migrator`. The `mhelix_migrator` and `mhelix_runtime` users do not
+inherit `admin`. The runtime user has database `CONNECT`, schema `USAGE`, and
+`SELECT` only on `mhelix_environment_markers`; `SELECT` on `mhelix_runs` is
+denied as intended.
+
+The canonical environment-marker source is committed at `48e85b4`, with digest
+`ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
+The migration-ledger and marker rows have not been inserted, and the deployed
+AWS (Amazon Web Services) Lambda transport has no database bootstrap. This is
+live foundation evidence only, not proof of a connected provider, persistent
+memory, vector retrieval, or Managed MCP (Model Context Protocol).
+
+### Filecoin: planned encrypted cold evidence
+
+Filecoin is the planned store for client-encrypted evidence capsules, not live
+agent memory, authorization state, plaintext records, or keys. CockroachDB owns
+the searchable manifest and archival outbox, Midnight owns policy commitments
+and permitted state transitions, and a bounded off-chain DIDzM (DIDzMonolith) worker performs
+encryption, upload, retrieval, and verification. This boundary remains
+`PLANNED`; see the [Filecoin integration plan](FILECOIN_INTEGRATION.md).
+
 ### Midnight: privacy trust plane
 
 Midnight must receive only minimized commitments and policy inputs suitable for
@@ -105,7 +136,7 @@ the bounded coordinator that:
 Secrets will remain in AWS Secrets Manager. The Lambda role will receive only
 the exact database secret, model resources, and logging permissions it requires.
 
-### Mock DIDzM pillars
+### Mock DIDzM (DIDzMonolith) pillars
 
 The three providers share the same interfaces expected of future real
 integrations:

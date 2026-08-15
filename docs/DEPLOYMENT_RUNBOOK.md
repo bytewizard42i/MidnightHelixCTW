@@ -22,6 +22,20 @@ current live evidence.
 > the global `deploymentEvidence` value remains `SOURCE_ONLY`. The failed first
 > create remains documented in the
 > [sanitized rollback archive](archive/aws/2026-08-14-first-create-rollback.md).
+>
+> The CockroachDB foundation is also verified independently. Database and
+> schema `mhelix_testwired` exist, and migration
+> `001_testwired_memory_core.sql` created 10 empty tables owned by
+> `mhelix_migrator`. The `mhelix_migrator` and `mhelix_runtime` users do not
+> inherit `admin`. The runtime user has database `CONNECT`, schema `USAGE`, and
+> `SELECT` only on `mhelix_environment_markers`; a read from `mhelix_runs` is
+> denied as intended. The canonical environment-marker contract is committed
+> at `48e85b4` with digest
+> `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
+> No migration-ledger row or environment-marker row has been inserted, and the
+> deployed AWS (Amazon Web Services) Lambda transport has no database
+> bootstrap. CockroachDB therefore remains `NOT_CONNECTED` at the application
+> provider boundary.
 
 ## Target public surfaces
 
@@ -61,7 +75,7 @@ cloud transport provider evidence: REALDEAL_TEST
 downstream provider connections: NOT_CONNECTED
 AWS stack: mhelixctw-testwired
 AWS region: us-east-1
-Cockroach database: mhelixctw_testwired
+Cockroach database: mhelix_testwired
 eligible output evidence label: REALDEAL_TEST
 fixture namespace: TestTownDIDz
 ```
@@ -72,18 +86,31 @@ remains `TESTWIRED`; each capability is promoted separately only after its requi
 
 ## Step 1, provision CockroachDB safely
 
-1. Create or select the Basic cluster intended for the hackathon.
-2. Create a dedicated database rather than sharing the public schema with unrelated
+The 2026-08-15 foundation checkpoint completed the isolated database, schema,
+migration, table ownership, role separation, and negative permission test. The
+environment-marker row, migration-ledger row, deployed AWS (Amazon Web Services)
+Lambda bootstrap, fixture seed, and vector path remain incomplete.
+
+1. Select the Basic cluster intended for the hackathon.
+2. Use the dedicated `mhelix_testwired` database rather than sharing the public schema with unrelated
    applications.
-3. Use a temporary migrator role for schema changes.
-4. Create a narrow Lambda runtime role with only the exact table operations needed.
-5. Create a separate read-only role for Managed MCP evidence.
-6. Remove inherited public privileges that would broaden either role.
-7. install and verify an environment marker bound to the expected database, stage,
+3. Use `mhelix_migrator` for reviewed schema changes.
+4. Use `mhelix_runtime` with only the exact table operations needed.
+5. Create a separate read-only role for Managed MCP (Model Context Protocol) evidence.
+6. Keep both application users outside the `admin` role and verify negative access.
+7. Insert and verify an environment marker bound to the expected database, stage,
    and runtime user.
 8. Apply migrations and seed only the immutable synthetic fixture namespace.
 
-Do not place a database URL in Git, browser code, Lambda environment plaintext, or
+Steps 1 through 4 and Step 6 have verified foundation evidence. Step 5 remains
+open until the Managed MCP (Model Context Protocol) role is separately proven
+read only. Before Step 7 can promote the provider, insert the migration-ledger
+and environment-marker rows from the committed canonical contract,
+independently read back the expected digest, and then deploy the reviewed
+bootstrap. Step 8 remains open until the synthetic fixture and vector path are
+implemented and verified.
+
+Do not place a database URL (Uniform Resource Locator) in Git, browser code, Lambda environment plaintext, or
 CloudFormation output.
 
 ## Step 2, create server-side secrets

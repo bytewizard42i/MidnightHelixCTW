@@ -15,7 +15,7 @@ flowchart LR
     Lambda["AWS (Amazon Web Services) Lambda\nLIVE TESTWIRED transport only"]
     Guard["Mutation boundary\n503 LIVE_PROVIDERS_NOT_CONNECTED"]
     Bedrock["AWS (Amazon Web Services) Bedrock target\nPLANNED, NOT_CONNECTED"]
-    Cockroach["CockroachDB Cloud target\nPLANNED, NOT_CONNECTED"]
+    Cockroach["CockroachDB Cloud\nschema foundation LIVE TESTWIRED\nruntime NOT_CONNECTED"]
     MCP["Managed MCP (Model Context Protocol) verifier target\nPLANNED, NOT_CONNECTED"]
     Evaluator["Private evidence evaluator target\nPLANNED, NOT_CONNECTED"]
     Midnight["Midnight test network target\nPLANNED, NOT_CONNECTED"]
@@ -27,7 +27,7 @@ flowchart LR
     Gateway -->|"live invocation"| Lambda
     Lambda -->|"live read-only response"| Gateway
     Lambda -->|"mutation attempts fail closed"| Guard
-    Lambda -. "planned connection" .-> Cockroach
+    Lambda -. "reviewed bootstrap pending" .-> Cockroach
     Lambda -. "planned connection" .-> Bedrock
     Lambda -. "callable provider not connected" .-> Mocks
     Lambda -. "planned connection" .-> Evaluator
@@ -44,20 +44,31 @@ flowchart LR
 | API (Application Programming Interface) | <https://iyoshkil91.execute-api.us-east-1.amazonaws.com> |
 | Amplify origin | <https://main.d23ghemtd40rom.amplifyapp.com> |
 | Custom UI (User Interface) | <https://testwired.helixctw.com> |
+| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 empty tables owned by `mhelix_migrator`; runtime activation remains pending. |
 
 Only the AWS (Amazon Web Services) transport and public UI (User Interface)
-hosting are live. CockroachDB, AWS (Amazon Web Services) Bedrock, Midnight, and
-Managed MCP (Model Context Protocol) are planned and disconnected. Valid mutations return `503 LIVE_PROVIDERS_NOT_CONNECTED` and
+hosting are application-connected. CockroachDB has a verified live schema
+foundation, least-privilege migrator and runtime users, and a committed
+environment-marker contract, but the marker row and deployed runtime bootstrap
+are absent. The CockroachDB application provider, AWS (Amazon Web Services)
+Bedrock, Midnight, and Managed MCP (Model Context Protocol) remain
+`NOT_CONNECTED`. Valid mutations return `503 LIVE_PROVIDERS_NOT_CONNECTED` and
 fail closed, so the global `deploymentEvidence` value remains `SOURCE_ONLY`.
 
 ## The three planes
 
 ### Target memory plane
 
-CockroachDB will store the durable session history, append-only events,
-privacy-safe summaries, vectors, exact property state, rebuild generations, and
-receipts. It will be the system a fresh agent process uses to resume work. This
-provider is currently planned and disconnected.
+CockroachDB is provisioned with the `mhelix_testwired` database and schema.
+Migration `001_testwired_memory_core.sql` created 10 empty tables owned by
+`mhelix_migrator`. The `mhelix_runtime` user has database `CONNECT`, schema
+`USAGE`, and `SELECT` only on the environment-marker table; access to
+`mhelix_runs` is denied as intended. No migration-ledger row or
+environment-marker row has been inserted, and the deployed AWS (Amazon Web
+Services) Lambda transport does not inject a database provider. Durable session
+history, append-only events, privacy-safe summaries, vectors, exact property
+state, rebuild generations, and receipts therefore remain planned and
+disconnected application capabilities.
 
 ### Target trust plane
 

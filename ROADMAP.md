@@ -28,13 +28,16 @@ The release target is one public TestWired application that proves all of the fo
 | Public repository and synthetic fixture baseline | The standalone repository is public and Apache-2.0 licensed; repeat source, fixture, provenance, media, and secret checks at the final release commit. |
 | Judge UI (User Interface) | `LIVE_TESTWIRED`; Amplify serves `main` at `https://testwired.helixctw.com` and its generated address. Hosting and read-only connection are live, while mutation controls remain locked. |
 | AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda | `LIVE_TESTWIRED` for public transport only; the application stack is `CREATE_COMPLETE`, read-only routes respond, and valid operations fail closed because downstream providers are disconnected. |
-| CockroachDB Cloud connection and TestWired environment probe plus additive memory schema | `SOURCE_ONLY`; a bounded, single-flight, read-only query seam and additive run-scoped schema exist in source. The default Lambda export has no database provider, and the repository records no applied migration. |
+| CockroachDB database and schema foundation | `LIVE_TESTWIRED` foundation evidence: database and schema `mhelix_testwired` are live; migration `001_testwired_memory_core.sql` was applied; 10 empty tables are owned by `mhelix_migrator`; the migrator and runtime users do not inherit `admin`; runtime marker-table access and `mhelix_runs` denial were verified. |
+| CockroachDB connection and TestWired environment probe | `SOURCE_ONLY` probe and `NOT_CONNECTED` runtime: canonical marker source commit `48e85b4` and digest `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198` are committed, but the migration-ledger and marker rows plus the deployed Lambda bootstrap are absent. |
 | CockroachDB persistent memory and vector retrieval, Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | `PLANNED` and `NOT_CONNECTED`. |
+| Filecoin encrypted cold evidence | `PLANNED`; it is outside the critical hackathon judge path. The post-submission allocation, Calibration lifecycle, security boundary, and promotion evidence are defined in the [Filecoin integration plan](docs/FILECOIN_INTEGRATION.md). |
 | DIDz, AgenticDID, RWAz | Synthetic fixtures are `MOCK`; callable provider connections remain `NOT_CONNECTED`. |
 
 The Friday live-service exit gate is partially met. A signed-out browser reaches
-the real Lambda transport, but no real CockroachDB-backed memory route exists
-yet.
+the real Lambda transport, and the real CockroachDB database and schema
+foundation exists. No CockroachDB-backed application-memory route exists yet,
+so the provider remains `NOT_CONNECTED`.
 
 ## Immediate Priority Zero spine
 
@@ -49,9 +52,11 @@ Work in this order before expanding the live path:
 5. Record a public demonstration video under three minutes that visibly shows
    the CockroachDB memory layer and both qualifying tools.
 
-AWS (Amazon Web Services) transport is already live. CockroachDB, Bedrock,
-Midnight, reconstruction, and Managed MCP (Model Context Protocol) must not be
-described as live until each has current execution evidence.
+AWS (Amazon Web Services) transport and the CockroachDB database and schema
+foundation are already live. The CockroachDB application provider, persistent
+memory and vector path, Bedrock, Midnight, reconstruction, and Managed MCP
+(Model Context Protocol) must not be described as live until each has current
+execution evidence.
 
 ## Non-negotiable scope
 
@@ -108,18 +113,24 @@ API (Application Programming Interface) Gateway produced an endpoint. The
 transformed OpenAPI server and CORS (Cross-Origin Resource Sharing) defects were
 corrected, a built-template contract was added and validated, and a later
 deployment succeeded. The public UI (User Interface) and read-only transport are
-live. CockroachDB, Bedrock, Midnight, reconstruction, and Managed MCP (Model
-Context Protocol) remain disconnected, so operational controls remain locked.
+live. The CockroachDB database and schema foundation is also live and verified,
+but its migration-ledger row, environment-marker row, and deployed Lambda
+bootstrap are absent. CockroachDB, Bedrock, Midnight, reconstruction, and
+Managed MCP (Model Context Protocol) remain application-disconnected, so
+operational controls remain locked.
 
 ### CockroachDB
 
-- Add checksummed migrations for sessions, events, summaries, embeddings,
-  canonical evidence manifests, projection generations, and rebuild receipts.
-- Use a separate migrator role, least-privilege Lambda runtime role, and
-  read-only MCP role.
-- Install and verify an environment marker before any runtime query.
-- Seed exactly one isolated synthetic case.
-- Generate a real Titan embedding and prove a CockroachDB cosine vector query.
+- [x] Apply checksummed migration `001_testwired_memory_core.sql` for the
+  additive memory foundation.
+- [x] Verify separate migrator and runtime users, no `admin` inheritance,
+  marker-table access, and denial on `mhelix_runs`.
+- [x] Commit the canonical marker source, invariant tests, and expected digest.
+- [ ] Insert and verify the migration-ledger and environment-marker rows.
+- [ ] Deploy the reviewed Lambda bootstrap and verify the read-only probe.
+- [ ] Seed exactly one isolated synthetic case.
+- [ ] Generate a real Titan embedding and prove a CockroachDB cosine vector query.
+- [ ] Create and verify the separate read-only MCP (Model Context Protocol) role.
 
 ### AWS
 

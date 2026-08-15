@@ -49,7 +49,9 @@ This table is navigation, not a second truth ledger. If it conflicts with
 | AWS (Amazon Web Services) infrastructure | The `mhelixctw-testwired` SAM (Serverless Application Model) stack is `CREATE_COMPLETE` at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`. Amplify generated and custom hosts plus exact-origin CORS (Cross-Origin Resource Sharing) are verified. | Monitor the test stack and add narrow provider IAM (Identity and Access Management) permissions only after each downstream provider is ready for independent verification. |
 | Shared protocol contracts | TestWired stages, provider states, Morrow scenario identifiers, actions, responses, receipts, and the zero-protected-field invariant are typed and source-tested. | Use the shared contract at each integration boundary and keep the browser and Lambda payloads aligned. |
 | DIDz, AgenticDID, and RWAz | Synthetic fixtures and explicit `MOCK` boundaries exist; Phase 1 reports their callable connections as `NOT_CONNECTED`. | Implement and connect only the narrow deterministic provider interfaces, with denial tests. |
-| CockroachDB, Bedrock, Midnight, and Managed MCP | Their intended boundaries and promotion evidence are documented. They are not represented as connected by Phase 1. | Connect and verify each provider separately, recording sanitized request, query, proof, or receipt evidence. |
+| CockroachDB foundation and connection probe | Migration 001 is applied to live database and schema `mhelix_testwired`; 10 empty tables, ownership, narrow runtime access, and `mhelix_runs` denial are verified. The probe remains `SOURCE_ONLY`, the runtime provider remains `NOT_CONNECTED`, and marker and ledger rows plus the Lambda bootstrap are absent. | Insert and verify the canonical marker and ledger rows, deploy the reviewed bootstrap, then verify the bounded read-only probe without promoting memory or vectors. |
+| Bedrock, Midnight, and Managed MCP (Model Context Protocol) | Their intended boundaries and promotion evidence are documented. They remain `PLANNED` and `NOT_CONNECTED`. | Connect and verify each provider separately, recording sanitized request, query, proof, or receipt evidence. |
+| Filecoin encrypted cold evidence | The [Filecoin integration plan](FILECOIN_INTEGRATION.md) defines the allocation, lifecycle, security boundary, and promotion evidence. The provider remains `PLANNED` and is outside the active judge path. | Implement the bounded off-chain worker, CockroachDB manifest and outbox, Calibration upload and retrieval, and Midnight receipt binding before any live claim. |
 | Reconstruction drill | The safe shadow-generation design and judge steps are documented. Whole-database recovery is not claimed. | Implement the disposable projection rebuild, verify commitment lineage, and demonstrate the same authorized answer afterward. |
 | Publication | Security, provenance, media-rights, video, Devpost, and publication checklists exist. | Close every applicable checklist item using the final commit and public URLs. |
 
@@ -127,13 +129,20 @@ This table is navigation, not a second truth ledger. If it conflicts with
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): system boundaries and end-to-end design.
 - [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md): target topology annotated
-  with current source-only, planned, and disconnected states.
+  with the current live CockroachDB schema foundation, source-only probe, and
+  planned and disconnected application-provider states.
 - [BUILD_STAGES.md](BUILD_STAGES.md): build stages, machine evidence labels,
   connection states, and display gates.
 - [COCKROACH_MEMORY_DESIGN.md](COCKROACH_MEMORY_DESIGN.md): canonical memory,
   vector retrieval, and projection-generation design.
 - [MIDNIGHT_TRUST_BOUNDARY.md](MIDNIGHT_TRUST_BOUNDARY.md): what Midnight may
   verify and what must remain off-chain.
+- [FILECOIN_INTEGRATION.md](FILECOIN_INTEGRATION.md): controlling plan for the
+  encrypted cold-evidence allocation, lifecycle, security boundary, and
+  promotion evidence.
+- [PENNY_FILECOIN_BRAID_NOTES_2026-08-15.md](PENNY_FILECOIN_BRAID_NOTES_2026-08-15.md):
+  advisory Filecoin ideation for the DIDzM (DIDzMonolith) braided mesh. It is not an
+  implementation-status source.
 - [TESTWIRED_FIXTURE_POLICY.md](TESTWIRED_FIXTURE_POLICY.md): rules for synthetic
   test data.
 

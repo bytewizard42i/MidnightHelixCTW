@@ -36,22 +36,40 @@ successful output carrying a sanitized real test-service receipt.
 | DIDz synthetic identity fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | AgenticDID synthetic authority fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | RWAz synthetic property fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
-| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | A bounded, single-flight, read-only query seam exists in source. Promotion requires a reviewed live driver bootstrap, an explicit server-side statement timeout shorter than the outer response timeout, an applied checksummed core migration, an installed marker, and a sanitized receipt from a real TestWired query. |
-| CockroachDB additive memory schema | SOURCE ONLY | The additive run-scoped schema and constraints exist in `database/migrations/001_testwired_memory_core.sql`; promotion requires a reviewed migrator to apply the checksummed file and record live schema and row evidence. The source deliberately contains no vector column or vector index. |
+| CockroachDB applied database and schema foundation | LIVE TESTWIRED | Database and schema `mhelix_testwired` are live. Migration `001_testwired_memory_core.sql` was applied, creating 10 empty tables owned by `mhelix_migrator`. The migrator and runtime users do not inherit `admin`; runtime has database `CONNECT`, schema `USAGE`, and `SELECT` only on the marker table, while `SELECT` on `mhelix_runs` is denied. This status proves only the named foundation and grants. |
+| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | The bounded, single-flight, read-only query seam and canonical marker source commit `48e85b4` exist. The expected digest is `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`, but the migration-ledger and marker rows are absent, and the deployed Lambda has no database bootstrap. The application provider remains `NOT_CONNECTED`. |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
-| CockroachDB Managed MCP | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
+| CockroachDB Managed MCP (Model Context Protocol) | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
 | AWS (Amazon Web Services) Lambda and Amazon API (Application Programming Interface) Gateway | LIVE TESTWIRED | The `mhelixctw-testwired` stack is `CREATE_COMPLETE` at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`; its generated address is `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. Read-only routes, exact-origin CORS (Cross-Origin Resource Sharing), and the fail-closed mutation check passed. This promotion applies only to cloud transport; downstream providers remain `NOT_CONNECTED`. |
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
+| Filecoin encrypted cold evidence | PLANNED | The [integration plan](FILECOIN_INTEGRATION.md) is documentation only. Promotion requires an explicit Calibration configuration, a bounded encrypted upload, a sanitized PieceCID (Piece Content Identifier) and storage receipt, a CockroachDB manifest and outbox record, successful retrieval with digest and commitment verification, Midnight receipt binding, and negative tamper and authorization results. |
 | Reconstructible derived index | PLANNED | Shadow generation rebuilt from canonical test records, commitment verified, pointer flipped atomically, same answer returned. |
 | Public judge UI (User Interface) | LIVE TESTWIRED | Amplify application `d23ghemtd40rom` serves branch `main` at `https://main.d23ghemtd40rom.amplifyapp.com` and `https://testwired.helixctw.com`. The custom address is `AVAILABLE`, returns HTTP (Hypertext Transfer Protocol) status 200, and presents valid TLS (Transport Layer Security) 1.3. Hosting and read-only connection are promoted; the complete mutation journey remains unavailable while `readyForMutations` is false. |
 
-The two CockroachDB `SOURCE ONLY` rows are code and schema evidence, not live
-service evidence. They do not prove a live database driver, an applied
-migration, persistent memory, vector indexing or retrieval, Managed MCP (Model
-Context Protocol), or mutation readiness. The default Lambda export remains
-database-disconnected until a reviewed bootstrap injects the provider.
+The CockroachDB `LIVE TESTWIRED` foundation row is live service evidence only
+for the applied migration, empty schema objects, ownership, and narrow grants.
+The `SOURCE ONLY` probe row remains source evidence, and the application runtime
+remains `NOT_CONNECTED`. Neither row proves persistent memory, vector indexing
+or retrieval, Managed MCP (Model Context Protocol), or mutation readiness.
+
+### 2026-08-15 CockroachDB foundation checkpoint
+
+Migration `001_testwired_memory_core.sql` was applied to database and schema
+`mhelix_testwired`. It created 10 empty tables owned by `mhelix_migrator`.
+The `mhelix_migrator` and `mhelix_runtime` users do not inherit `admin`.
+The runtime user has database `CONNECT`, schema `USAGE`, and `SELECT` only on
+`mhelix_environment_markers`. A `SELECT` from `mhelix_runs` is denied as
+intended.
+
+The canonical environment-marker source commit is `48e85b4`, with digest
+`ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
+No migration-ledger or environment-marker row has been inserted. The deployed
+AWS (Amazon Web Services) Lambda transport has no database bootstrap, so the
+CockroachDB application provider remains `NOT_CONNECTED`. Persistent memory,
+vector retrieval, and Managed MCP (Model Context Protocol) remain unproven and
+planned.
 
 `MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
 reports all three provider connections as `NOT_CONNECTED` and does not call a
