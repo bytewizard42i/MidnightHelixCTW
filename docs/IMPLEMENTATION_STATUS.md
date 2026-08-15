@@ -36,6 +36,8 @@ successful output carrying a sanitized real test-service receipt.
 | DIDz synthetic identity fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | AgenticDID synthetic authority fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | RWAz synthetic property fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
+| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | A bounded, single-flight, read-only query seam exists in source. Promotion requires a reviewed live driver bootstrap, an explicit server-side statement timeout shorter than the outer response timeout, an applied checksummed core migration, an installed marker, and a sanitized receipt from a real TestWired query. |
+| CockroachDB additive memory schema | SOURCE ONLY | The additive run-scoped schema and constraints exist in `database/migrations/001_testwired_memory_core.sql`; promotion requires a reviewed migrator to apply the checksummed file and record live schema and row evidence. The source deliberately contains no vector column or vector index. |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
 | CockroachDB Managed MCP | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
@@ -44,6 +46,12 @@ successful output carrying a sanitized real test-service receipt.
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
 | Reconstructible derived index | PLANNED | Shadow generation rebuilt from canonical test records, commitment verified, pointer flipped atomically, same answer returned. |
 | Public judge UI (User Interface) | LIVE TESTWIRED | Amplify application `d23ghemtd40rom` serves branch `main` at `https://main.d23ghemtd40rom.amplifyapp.com` and `https://testwired.helixctw.com`. The custom address is `AVAILABLE`, returns HTTP (Hypertext Transfer Protocol) status 200, and presents valid TLS (Transport Layer Security) 1.3. Hosting and read-only connection are promoted; the complete mutation journey remains unavailable while `readyForMutations` is false. |
+
+The two CockroachDB `SOURCE ONLY` rows are code and schema evidence, not live
+service evidence. They do not prove a live database driver, an applied
+migration, persistent memory, vector indexing or retrieval, Managed MCP (Model
+Context Protocol), or mutation readiness. The default Lambda export remains
+database-disconnected until a reviewed bootstrap injects the provider.
 
 `MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
 reports all three provider connections as `NOT_CONNECTED` and does not call a

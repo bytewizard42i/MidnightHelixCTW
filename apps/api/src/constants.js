@@ -28,11 +28,13 @@ export const ACTIONS = Object.freeze([
 export const RESPONSE_SCHEMA_VERSION = "mhelixctw/api/v1";
 
 /**
- * These are the fail-closed baseline states. The handler upgrades only the AWS
- * row after validating that it is executing inside the deployed Lambda
- * runtime. Every downstream provider remains SOURCE_ONLY and NOT_CONNECTED
- * until its own reviewed integration records real execution evidence. Even the
- * mock fixture providers are not called by this Phase 1 transport shell.
+ * These are the fail-closed baseline states. The default handler upgrades only
+ * the AWS (Amazon Web Services) row after validating its deployed Lambda
+ * runtime. A separately injected, reviewed query executor may upgrade only the
+ * CockroachDB connection-and-environment-probe row. Every other downstream
+ * provider remains SOURCE_ONLY and NOT_CONNECTED until its integration records
+ * real execution evidence. Mock fixture providers are not called by this
+ * Phase 1 transport shell.
  */
 export const PROVIDER_STATES = Object.freeze([
   Object.freeze({
@@ -44,7 +46,7 @@ export const PROVIDER_STATES = Object.freeze([
   }),
   Object.freeze({
     id: "cockroachdb",
-    label: "CockroachDB Cloud memory and vector retrieval",
+    label: "CockroachDB Cloud connection and TestWired environment probe",
     targetMode: "LIVE_TESTWIRED",
     evidence: "SOURCE_ONLY",
     connection: "NOT_CONNECTED",

@@ -1,6 +1,6 @@
 # MHelixCTW Hackathon Roadmap
 
-**Last updated:** August 14, 2026
+**Last updated:** August 15, 2026
 
 **Internal submission target:** Sunday, August 16, 2026, 9:00 PM EDT
 **Official deadline:** Tuesday, August 18, 2026, 5:00 PM EDT
@@ -21,17 +21,37 @@ The release target is one public TestWired application that proves all of the fo
    receipt in read-only mode.
 7. AWS meaningfully hosts the agent path.
 
-## Actual evidence snapshot, August 14
+## Actual evidence snapshot, August 15
 
 | Area | Current state |
 | --- | --- |
-| Public repository and synthetic fixture baseline | `VERIFIED_LOCAL` at the previously checked source revision; repeat all release checks after the current work is committed. |
-| Judge UI | `SOURCE_ONLY`; guided presentation, narration, request guards, and evidence validation exist locally, but no public URL is verified. |
-| AWS API and Lambda | `SOURCE_ONLY`; the first create rolled back before an endpoint and the local OpenAPI fix has not been redeployed. |
-| CockroachDB, Bedrock, Midnight, reconstruction, Managed MCP | `PLANNED` and `NOT_CONNECTED`. |
+| Public repository and synthetic fixture baseline | The standalone repository is public and Apache-2.0 licensed; repeat source, fixture, provenance, media, and secret checks at the final release commit. |
+| Judge UI (User Interface) | `LIVE_TESTWIRED`; Amplify serves `main` at `https://testwired.helixctw.com` and its generated address. Hosting and read-only connection are live, while mutation controls remain locked. |
+| AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda | `LIVE_TESTWIRED` for public transport only; the application stack is `CREATE_COMPLETE`, read-only routes respond, and valid operations fail closed because downstream providers are disconnected. |
+| CockroachDB Cloud connection and TestWired environment probe plus additive memory schema | `SOURCE_ONLY`; a bounded, single-flight, read-only query seam and additive run-scoped schema exist in source. The default Lambda export has no database provider, and the repository records no applied migration. |
+| CockroachDB persistent memory and vector retrieval, Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | `PLANNED` and `NOT_CONNECTED`. |
 | DIDz, AgenticDID, RWAz | Synthetic fixtures are `MOCK`; callable provider connections remain `NOT_CONNECTED`. |
 
-The Friday live-service exit gate has not been met.
+The Friday live-service exit gate is partially met. A signed-out browser reaches
+the real Lambda transport, but no real CockroachDB-backed memory route exists
+yet.
+
+## Immediate Priority Zero spine
+
+Work in this order before expanding the live path:
+
+1. Make CockroachDB the persistent cross-session agent-memory layer.
+2. Put CockroachDB Distributed Vector Indexing in the real recall path.
+3. Add read-only CockroachDB Managed MCP (Model Context Protocol) verification
+   as the second qualifying CockroachDB tool.
+4. Complete and verify the public guided memory flow while preserving the
+   existing fail-closed boundary.
+5. Record a public demonstration video under three minutes that visibly shows
+   the CockroachDB memory layer and both qualifying tools.
+
+AWS (Amazon Web Services) transport is already live. CockroachDB, Bedrock,
+Midnight, reconstruction, and Managed MCP (Model Context Protocol) must not be
+described as live until each has current execution evidence.
 
 ## Non-negotiable scope
 
@@ -83,12 +103,13 @@ architecture, roadmap, and green offline verification.
 
 ### Actual Friday status
 
-The first AWS create was attempted and rolled back before API Gateway produced
-an endpoint. The transformed OpenAPI server and CORS defects were corrected in
-local source, and a built-template contract was added and validated. No
-redeployment has succeeded. The guided UI and ordered response-evidence source
-advanced locally, but CockroachDB, Bedrock, Midnight, reconstruction, and
-Managed MCP remain disconnected.
+The first AWS (Amazon Web Services) create was attempted and rolled back before
+API (Application Programming Interface) Gateway produced an endpoint. The
+transformed OpenAPI server and CORS (Cross-Origin Resource Sharing) defects were
+corrected, a built-template contract was added and validated, and a later
+deployment succeeded. The public UI (User Interface) and read-only transport are
+live. CockroachDB, Bedrock, Midnight, reconstruction, and Managed MCP (Model
+Context Protocol) remain disconnected, so operational controls remain locked.
 
 ### CockroachDB
 

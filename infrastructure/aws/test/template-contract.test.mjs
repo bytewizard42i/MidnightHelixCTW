@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
 
+const apiPackage = JSON.parse(
+  await readFile(
+    new URL("../../../apps/api/package.json", import.meta.url),
+    "utf8",
+  ),
+);
 const template = await readFile(new URL("../template.yaml", import.meta.url), "utf8");
 const deployScript = await readFile(new URL("../scripts/deploy.sh", import.meta.url), "utf8");
 const validateLocalScript = await readFile(
@@ -14,6 +21,9 @@ const buildScript = await readFile(new URL("../scripts/build.sh", import.meta.ur
 const builtTemplatePath = process.env.MHELIX_BUILT_TEMPLATE_FILE;
 const builtTemplate = builtTemplatePath
   ? await readFile(builtTemplatePath, "utf8")
+  : undefined;
+const builtApiArtifactDirectory = builtTemplatePath
+  ? resolve(dirname(builtTemplatePath), "ApiFunction")
   : undefined;
 
 const expectedCorsKeys = [
@@ -129,6 +139,20 @@ if (builtTemplate !== undefined) {
   test("SAM built template preserves the OpenAPI server and object-shaped CORS", () => {
     assertOpenApiTransportContract(builtTemplate, "SAM built template");
   });
+
+  test(
+    "SAM (Serverless Application Model) package excludes API (Application Programming Interface) tests",
+    async () => {
+      const packageEntries = await readdir(builtApiArtifactDirectory);
+
+      assert.ok(packageEntries.includes("package.json"));
+      assert.ok(packageEntries.includes("src"));
+      assert.ok(
+        !packageEntries.includes("test"),
+        "the Lambda artifact must not contain API (Application Programming Interface) test files",
+      );
+    },
+  );
 }
 
 test("account-incompatible reserved concurrency is absent", () => {
@@ -150,6 +174,7 @@ test("Lambda package is the dedicated dependency-free API shell", () => {
   assert.match(template, /Runtime:\s*nodejs24\.x/);
   assert.match(template, /CodeUri:\s*\.\.\/\.\.\/apps\/api\//);
   assert.match(template, /Handler:\s*src\/handler\.handler/);
+  assert.deepEqual(apiPackage.files, ["src"]);
   assert.match(template, /MHELIX_MAX_REQUEST_BYTES:\s*"4096"/);
   assert.match(template, /MHELIX_MAX_RESPONSE_BYTES:\s*"32768"/);
 });

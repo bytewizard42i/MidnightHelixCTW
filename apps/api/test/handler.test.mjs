@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ACTIONS, CANONICAL_SCENARIO } from "../src/constants.js";
-import { handler } from "../src/handler.js";
+import { createHandler, handler } from "../src/handler.js";
+import { MHELIX_COCKROACH_PROBE_SCHEMA_VERSION } from "../src/cockroachdb-provider.js";
 
 const PRIMARY_ORIGIN = "https://testwired.helixctw.com";
 const TEST_IDEMPOTENCY_VALUE = "judge-operation-0001";
@@ -320,4 +321,123 @@ test("fixed routes reject query strings and wrong methods", async () => {
   const wrongMethod = await handler(event("POST", "/healthz"));
   assertErrorEnvelope(wrongMethod, 405, "METHOD_NOT_ALLOWED");
   assert.equal(wrongMethod.headers.allow, "GET");
+});
+
+test("default handler remains database-disconnected without a reviewed bootstrap", async () => {
+  const health = payload(await handler(event("GET", "/healthz")));
+  const cockroachProvider = health.providers.find(
+    (provider) => provider.id === "cockroachdb",
+  );
+
+  assert.equal(
+    cockroachProvider.label,
+    "CockroachDB Cloud connection and TestWired environment probe",
+  );
+  assert.equal(cockroachProvider.evidence, "SOURCE_ONLY");
+  assert.equal(cockroachProvider.connection, "NOT_CONNECTED");
+  assert.equal(cockroachProvider.evidenceReference, undefined);
+});
+
+const CONNECTED_COCKROACH_PROOF = Object.freeze({
+  schemaVersion: MHELIX_COCKROACH_PROBE_SCHEMA_VERSION,
+  connected: true,
+  receiptId: "019f1234-5678-7890-8abc-def012345678",
+  observedAt: "2026-08-15T12:30:45.000Z",
+});
+
+test("injected CockroachDB proof promotes only its read-only provider row", async () => {
+  let probeCount = 0;
+  const injectedHandler = createHandler({
+    cockroachProvider: {
+      async probe() {
+        probeCount += 1;
+        return CONNECTED_COCKROACH_PROOF;
+      },
+    },
+  });
+
+  const responseBodies = [];
+  for (const path of ["/healthz", "/api/v1/status", "/api/v1/judge/scenarios"]) {
+    responseBodies.push(payload(await injectedHandler(event("GET", path))));
+  }
+
+  for (const body of responseBodies) {
+    const cockroachProvider = body.providers.find(
+      (provider) => provider.id === "cockroachdb",
+    );
+    assert.equal(cockroachProvider?.evidence, "REALDEAL_TEST");
+    assert.equal(cockroachProvider?.connection, "CONNECTED");
+    assert.equal(
+      cockroachProvider?.label,
+      "CockroachDB Cloud connection and TestWired environment probe",
+    );
+    assert.match(
+      cockroachProvider?.detail,
+      /does not prove or enable memory persistence/,
+    );
+    assert.match(cockroachProvider?.detail, /vector retrieval/);
+    assert.deepEqual(cockroachProvider?.evidenceReference, {
+      label: "REALDEAL_TEST",
+      provider: "cockroachdb",
+      receiptId: CONNECTED_COCKROACH_PROOF.receiptId,
+      observedAt: CONNECTED_COCKROACH_PROOF.observedAt,
+    });
+
+    for (const provider of body.providers.filter(
+      (provider) => !["aws", "cockroachdb"].includes(provider.id),
+    )) {
+      assert.equal(provider.evidence, "SOURCE_ONLY");
+      assert.equal(provider.connection, "NOT_CONNECTED");
+      assert.equal(provider.evidenceReference, undefined);
+    }
+
+    assert.equal(body.deploymentEvidence, "SOURCE_ONLY");
+  }
+
+  assert.equal(responseBodies[0].dependenciesConnected, false);
+  assert.equal(responseBodies[1].currentAvailability, "NOT_CONNECTED");
+  assert.equal(responseBodies[1].readyForMutations, false);
+  assert.equal(responseBodies[1].writeOperations, "BLOCKED_UNTIL_CONNECTED");
+  assert.equal(responseBodies[2].scenarios[0].currentAvailability, "NOT_CONNECTED");
+  assert.equal(probeCount, 3);
+
+  const blockedMutation = await injectedHandler(
+    post("/api/v1/judge/runs", {
+      scenarioId: CANONICAL_SCENARIO.scenarioId,
+    }),
+  );
+  assertErrorEnvelope(blockedMutation, 503, "LIVE_PROVIDERS_NOT_CONNECTED");
+  const blockedCockroachState = payload(blockedMutation).providers.find(
+    (provider) => provider.id === "cockroachdb",
+  );
+  assert.equal(blockedCockroachState.evidence, "SOURCE_ONLY");
+  assert.equal(blockedCockroachState.connection, "NOT_CONNECTED");
+  assert.equal(probeCount, 3);
+});
+
+test("CockroachDB probe failures expose only one bounded fail-closed state", async () => {
+  const injectedHandler = createHandler({
+    cockroachProvider: {
+      async probe() {
+        throw new Error("MHELIX_PRIVATE_HANDLER_FAILURE_SENTINEL_18b7f364a0");
+      },
+    },
+  });
+
+  const health = payload(await injectedHandler(event("GET", "/healthz")));
+  const serializedHealth = JSON.stringify(health);
+  const cockroachProvider = health.providers.find(
+    (provider) => provider.id === "cockroachdb",
+  );
+
+  assert.equal(cockroachProvider.evidence, "SOURCE_ONLY");
+  assert.equal(cockroachProvider.connection, "ERROR");
+  assert.equal(cockroachProvider.evidenceReference, undefined);
+  assert.match(cockroachProvider.detail, /failed closed/);
+  assert.match(cockroachProvider.detail, /memory persistence, vector retrieval/);
+  assert.doesNotMatch(
+    serializedHealth,
+    /MHELIX_PRIVATE_HANDLER_FAILURE_SENTINEL_18b7f364a0/,
+  );
+  assert.equal(health.dependenciesConnected, false);
 });

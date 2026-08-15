@@ -5,6 +5,9 @@
   "description": "Bounded TestWired API shell for MidnightHelixCTW.",
   "license": "Apache-2.0",
   "type": "module",
+  "files": [
+    "src"
+  ],
   "scripts": {
     "test": "node --test test/*.test.mjs"
   },

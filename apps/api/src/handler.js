@@ -9,6 +9,7 @@ import {
   CANONICAL_SCENARIO,
   PROVIDER_STATES,
 } from "./constants.js";
+import { MHELIX_COCKROACH_PROBE_SCHEMA_VERSION } from "./cockroachdb-provider.js";
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const AWS_LAMBDA_FUNCTION_NAME_PATTERN = /^[A-Za-z0-9-_]{1,57}-worker$/;
@@ -20,6 +21,8 @@ const RELEASE_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const REQUEST_IDENTIFIER_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 const REGION_PATTERN = /^[a-z]{2}(?:-gov)?-[a-z]+-\d$/;
 const TEXT_WITHOUT_CONTROL_CHARACTERS = /^[^\u0000-\u001F\u007F]*$/u;
+const EVIDENCE_RECEIPT_IDENTIFIER_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 class PublicApiError extends Error {
   constructor(statusCode, code, message, retryable = false) {
@@ -244,6 +247,81 @@ function cloneProviderStates(configuration, requestId) {
       },
     };
   });
+}
+
+function isCanonicalUtcTimestamp(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const parsedTimestamp = new Date(value);
+  return (
+    Number.isFinite(parsedTimestamp.getTime()) &&
+    parsedTimestamp.toISOString() === value
+  );
+}
+
+/**
+ * Read-only connection evidence is allowlisted field by field. A provider can
+ * never spread a database row, driver error, URL (Uniform Resource Locator),
+ * database name, or user name
+ * into a public response.
+ */
+async function buildReadOnlyProviderStates(
+  configuration,
+  requestId,
+  cockroachProvider,
+) {
+  const providerStates = cloneProviderStates(configuration, requestId);
+  if (cockroachProvider === undefined) {
+    return providerStates;
+  }
+
+  const cockroachProviderIndex = providerStates.findIndex(
+    (providerState) => providerState.id === "cockroachdb",
+  );
+  const baselineCockroachState = providerStates[cockroachProviderIndex];
+
+  try {
+    if (typeof cockroachProvider?.probe !== "function") {
+      throw new Error("Invalid CockroachDB provider.");
+    }
+
+    const probeResult = await cockroachProvider.probe();
+    if (
+      probeResult?.schemaVersion !== MHELIX_COCKROACH_PROBE_SCHEMA_VERSION ||
+      probeResult.connected !== true ||
+      typeof probeResult.receiptId !== "string" ||
+      !EVIDENCE_RECEIPT_IDENTIFIER_PATTERN.test(probeResult.receiptId) ||
+      !isCanonicalUtcTimestamp(probeResult.observedAt)
+    ) {
+      throw new Error("Invalid CockroachDB connection proof.");
+    }
+
+    providerStates[cockroachProviderIndex] = {
+      ...baselineCockroachState,
+      evidence: "REALDEAL_TEST",
+      connection: "CONNECTED",
+      evidenceReference: {
+        label: "REALDEAL_TEST",
+        provider: "cockroachdb",
+        receiptId: probeResult.receiptId.toLowerCase(),
+        observedAt: probeResult.observedAt,
+      },
+      detail:
+        "The bounded read-only query verified the CockroachDB connection, runtime identity, and reviewed TestWired environment marker. It does not prove or enable memory persistence or vector retrieval.",
+    };
+  } catch {
+    providerStates[cockroachProviderIndex] = {
+      ...baselineCockroachState,
+      evidence: "SOURCE_ONLY",
+      connection: "ERROR",
+      detail:
+        "The CockroachDB connection and environment probe failed closed; memory persistence, vector retrieval, and dependent operations remain disabled.",
+    };
+  }
+
+  return providerStates;
 }
 
 function buildBasePayload(ok, requestId) {
@@ -513,7 +591,7 @@ function validateActionBody(requestBody) {
   assertCanonicalAgentIdentifier(requestBody.agentDidz);
 }
 
-function unavailableOperationPayload(configuration, requestId) {
+function unavailableOperationPayload(configuration, requestId, providerStates) {
   return {
     ...buildBasePayload(false, requestId),
     error: {
@@ -522,7 +600,7 @@ function unavailableOperationPayload(configuration, requestId) {
         "This Phase 1 API shell does not execute or persist judge operations until the reviewed live providers are connected.",
       retryable: false,
     },
-    providers: cloneProviderStates(configuration, requestId),
+    providers: providerStates,
   };
 }
 
@@ -583,7 +661,12 @@ function resolveRoute(requestPath) {
   return null;
 }
 
-async function dispatchRequest(event, configuration, requestId) {
+async function dispatchRequest(
+  event,
+  configuration,
+  requestId,
+  cockroachProvider,
+) {
   assertNoQueryParameters(event);
 
   const requestPath = getRequestPath(event);
@@ -611,6 +694,16 @@ async function dispatchRequest(event, configuration, requestId) {
     assertBoundedIdentifier(resolvedRoute.parameters.receiptId, "receiptId");
   }
 
+  const providerStates = ["health", "status", "scenarios"].includes(
+    resolvedRoute.name,
+  )
+    ? await buildReadOnlyProviderStates(
+        configuration,
+        requestId,
+        cockroachProvider,
+      )
+    : cloneProviderStates(configuration, requestId);
+
   if (resolvedRoute.name === "health") {
     return {
       statusCode: 200,
@@ -628,7 +721,7 @@ async function dispatchRequest(event, configuration, requestId) {
           maxRequestBytes: configuration.maxRequestBytes,
           maxResponseBytes: configuration.maxResponseBytes,
         },
-        providers: cloneProviderStates(configuration, requestId),
+        providers: providerStates,
       },
     };
   }
@@ -646,7 +739,7 @@ async function dispatchRequest(event, configuration, requestId) {
         readyForMutations: false,
         writeOperations: "BLOCKED_UNTIL_CONNECTED",
         actions: [...ACTIONS],
-        providers: cloneProviderStates(configuration, requestId),
+        providers: providerStates,
       },
     };
   }
@@ -670,7 +763,7 @@ async function dispatchRequest(event, configuration, requestId) {
               "The underlying deed and mortgage text must never be returned by this API.",
           },
         ],
-        providers: cloneProviderStates(configuration, requestId),
+        providers: providerStates,
       },
     };
   }
@@ -678,7 +771,11 @@ async function dispatchRequest(event, configuration, requestId) {
   if (resolvedRoute.name === "receipt") {
     return {
       statusCode: 503,
-      payload: unavailableOperationPayload(configuration, requestId),
+      payload: unavailableOperationPayload(
+        configuration,
+        requestId,
+        providerStates,
+      ),
     };
   }
 
@@ -695,77 +792,95 @@ async function dispatchRequest(event, configuration, requestId) {
 
   return {
     statusCode: 503,
-    payload: unavailableOperationPayload(configuration, requestId),
+    payload: unavailableOperationPayload(
+      configuration,
+      requestId,
+      providerStates,
+    ),
   };
 }
 
 /**
- * AWS Lambda HTTP API payload-format 2.0 handler.
+ * AWS (Amazon Web Services) Lambda HTTP (Hypertext Transfer Protocol)
+ * API (Application Programming Interface) payload-format 2.0 handler.
  *
- * This transport shell deliberately performs no database, model, wallet, or
- * network work. A valid mutation returns an explicit 503 until later adapters
- * are connected, which prevents fixture behavior from masquerading as a live
- * CockroachDB, Bedrock, or Midnight result.
+ * The default exported transport shell deliberately receives no database,
+ * model, wallet, or test-network provider. A valid mutation returns an explicit
+ * 503 until later adapters are connected, which prevents fixture behavior from
+ * masquerading as a live CockroachDB, Bedrock, or Midnight result. Tests may
+ * inject the narrow read-only CockroachDB probe without enabling mutations.
  */
-export async function handler(event) {
-  const configuration = readConfiguration();
-  const requestId = getRequestId(event);
-  let responseOrigin = "";
+export function createHandler({ cockroachProvider } = {}) {
+  return async function configuredHandler(event) {
+    const configuration = readConfiguration();
+    const requestId = getRequestId(event);
+    let responseOrigin = "";
 
-  try {
-    responseOrigin = validateOrigin(event, configuration);
-    const dispatchedResponse = await dispatchRequest(event, configuration, requestId);
-    return createJsonResponse(
-      configuration,
-      dispatchedResponse.statusCode,
-      dispatchedResponse.payload,
-      requestId,
-      responseOrigin,
-    );
-  } catch (error) {
-    if (error instanceof PublicApiError) {
-      const additionalHeaders =
-        error.allowedMethod === undefined ? {} : { allow: error.allowedMethod };
+    try {
+      responseOrigin = validateOrigin(event, configuration);
+      const dispatchedResponse = await dispatchRequest(
+        event,
+        configuration,
+        requestId,
+        cockroachProvider,
+      );
       return createJsonResponse(
         configuration,
-        error.statusCode,
+        dispatchedResponse.statusCode,
+        dispatchedResponse.payload,
+        requestId,
+        responseOrigin,
+      );
+    } catch (error) {
+      if (error instanceof PublicApiError) {
+        const additionalHeaders =
+          error.allowedMethod === undefined ? {} : { allow: error.allowedMethod };
+        return createJsonResponse(
+          configuration,
+          error.statusCode,
+          {
+            ...buildBasePayload(false, requestId),
+            error: {
+              code: error.code,
+              message: error.message,
+              retryable: error.retryable,
+            },
+          },
+          requestId,
+          responseOrigin,
+          additionalHeaders,
+        );
+      }
+
+      // Never serialize or log the unexpected error object. Provider libraries
+      // can place credentials or private payload fragments in their messages.
+      console.error(
+        JSON.stringify({
+          level: "error",
+          code: "UNEXPECTED_HANDLER_FAILURE",
+          requestId,
+        }),
+      );
+
+      return createJsonResponse(
+        configuration,
+        500,
         {
           ...buildBasePayload(false, requestId),
           error: {
-            code: error.code,
-            message: error.message,
-            retryable: error.retryable,
+            code: "INTERNAL_ERROR",
+            message: "The bounded request could not be completed.",
+            retryable: false,
           },
         },
         requestId,
         responseOrigin,
-        additionalHeaders,
       );
     }
-
-    // Never serialize or log the unexpected error object. Provider libraries
-    // can place credentials or private payload fragments in their messages.
-    console.error(
-      JSON.stringify({
-        level: "error",
-        code: "UNEXPECTED_HANDLER_FAILURE",
-        requestId,
-      }),
-    );
-
-    return createJsonResponse(
-      configuration,
-      500,
-      {
-        ...buildBasePayload(false, requestId),
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "The bounded request could not be completed.",
-          retryable: false,
-        },
-      },
-      requestId,
-      responseOrigin,
-    );
-  }
+  };
 }
+
+// The Lambda export remains database-disconnected until a later reviewed
+// bootstrap injects a query executor that enforces the required server-side
+// statement timeout.
+export const handler = createHandler();

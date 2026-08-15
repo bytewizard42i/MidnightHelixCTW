@@ -18,15 +18,28 @@ because the verified account quota requires all 10 current executions to remain
 unreserved. Operational API requests fail closed until later reviewed provider
 adapters are connected.
 
-A response running inside the validated AWS Lambda environment marks only the AWS
-transport row `REALDEAL_TEST` and `CONNECTED`. Global deployment evidence remains
-`SOURCE_ONLY`; CockroachDB, Bedrock, Midnight, Managed MCP, and the fixture
-providers remain disconnected, and mutations remain blocked.
+A response running inside the validated AWS (Amazon Web Services) Lambda
+environment marks only the AWS (Amazon Web Services) transport row
+`REALDEAL_TEST` and `CONNECTED`.
+The `mhelixctw-testwired` AWS (Amazon Web Services) application stack is
+`CREATE_COMPLETE`, and its generated
+API (Application Programming Interface) address is
+<https://iyoshkil91.execute-api.us-east-1.amazonaws.com>.
 
-No application stack has deployed successfully from this repository. The first
-create on 2026-08-14 rolled back before producing an endpoint. The staged source
-fix has not been redeployed. See the dated incident in
-[`docs/IMPLEMENTATION_STATUS.md`](../../docs/IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt).
+Amplify application `d23ghemtd40rom` serves branch `main` at the generated
+origin <https://main.d23ghemtd40rom.amplifyapp.com> and the custom
+UI (User Interface) address <https://testwired.helixctw.com>. This promotes only
+public hosting and AWS (Amazon Web Services) transport. The global
+`deploymentEvidence` value remains `SOURCE_ONLY`; CockroachDB, AWS (Amazon Web Services) Bedrock, Midnight,
+Managed MCP (Model Context Protocol), and the fixture providers remain
+disconnected. Valid mutation
+requests return `503 LIVE_PROVIDERS_NOT_CONNECTED` and fail closed.
+
+The failed first create on 2026-08-14 is preserved as historical evidence in
+the repository's
+[implementation status](../../docs/IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt)
+and [sanitized rollback archive](../../docs/archive/aws/2026-08-14-first-create-rollback.md).
+It does not describe the current successful application stack.
 
 ## Local validation
 
@@ -55,13 +68,13 @@ Keep this README open while running the commands below.
 cd /home/js/DIDzMonolith/MidnightHelixCTW
 export AWS_REGION=us-east-1
 export MHELIX_STACK_NAME=mhelixctw-testwired
-export MHELIX_PUBLIC_ALLOWED_ORIGINS=https://main.REPLACE_ME.amplifyapp.com,https://testwired.helixctw.com
+export MHELIX_PUBLIC_ALLOWED_ORIGINS=https://main.d23ghemtd40rom.amplifyapp.com,https://testwired.helixctw.com
 export MHELIX_CONFIRM_AWS_DEPLOY=DEPLOY_MHELIX_TESTWIRED_API
 bash infrastructure/aws/scripts/deploy.sh
 unset MHELIX_CONFIRM_AWS_DEPLOY
 ```
 
-Replace `main.REPLACE_ME.amplifyapp.com` with the exact generated Amplify origin.
+The exact generated Amplify origin and custom judge origin are recorded above.
 The script displays a CloudFormation change set and waits for confirmation. It
 does not deploy silently.
 

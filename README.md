@@ -6,7 +6,8 @@
 
 **Stage:** TestWired assembly
 **Environment target:** Public TestWired environment, synthetic data only
-**Current environment:** Local source-only assembly, no verified public endpoint
+**Current environment:** Public TestWired UI (User Interface) and AWS (Amazon
+Web Services) transport are live; downstream providers remain disconnected
 **Hackathon:** CockroachDB x AWS, Build with Agentic Memory
 **License:** Apache-2.0
 **Start here:** [Canonical judge and developer repository index](docs/INDEX.md)
@@ -16,12 +17,15 @@ attributed HelixCTW data-adapter baseline from the entrant-owned DIDzMonolith
 and builds a complete public application around it. The original repositories
 and their Git histories remain untouched.
 
-> **Current verified state, 2026-08-14:** The guided UI and AWS deployment
-> source exist locally. The first AWS application-stack create rolled back
-> before an API endpoint was produced. No public UI or API URL is verified.
-> CockroachDB, Bedrock, Midnight, and Managed MCP remain disconnected. DIDz,
-> AgenticDID, and RWAz have synthetic fixtures, but their callable providers
-> also remain disconnected. Operational controls fail closed. See the
+> **Current verified state, 2026-08-15:** The public judge UI (User Interface)
+> is live at `https://testwired.helixctw.com` and
+> `https://main.d23ghemtd40rom.amplifyapp.com`. The AWS (Amazon Web Services)
+> application stack is `CREATE_COMPLETE`, and its API (Application Programming
+> Interface) Gateway and Lambda transport are connected. CockroachDB, Bedrock,
+> Midnight, and Managed MCP (Model Context Protocol) remain disconnected. DIDz,
+> AgenticDID, and RWAz retain synthetic fixtures, while their callable providers
+> also remain disconnected. Operational controls remain locked and fail closed;
+> valid operations return `503 LIVE_PROVIDERS_NOT_CONNECTED`. See the
 > [implementation status](docs/IMPLEMENTATION_STATUS.md) for the evidence needed
 > to promote each capability.
 
@@ -48,8 +52,9 @@ No component may silently fall back to a mock.
 | Component | Submission target | Current repository state |
 | --- | --- | --- |
 | CockroachDB Cloud memory and distributed vectors | `REALDEAL_TEST` | Integration work pending |
-| CockroachDB Managed MCP verification | `REALDEAL_TEST` | Integration work pending |
-| AWS API Gateway, Lambda, and Bedrock | `REALDEAL_TEST` | Integration work pending |
+| CockroachDB Managed MCP (Model Context Protocol) verification | `REALDEAL_TEST` | Integration work pending |
+| AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda transport | `REALDEAL_TEST` | Public transport live; downstream providers disconnected |
+| AWS (Amazon Web Services) Bedrock | `REALDEAL_TEST` | Integration work pending |
 | Midnight test-network proof receipt | `REALDEAL_TEST` | Integration work pending |
 | DIDz identity | `MOCK` | Public synthetic provider fixture |
 | AgenticDID authority | `MOCK` | Public synthetic provider fixture |
@@ -136,6 +141,13 @@ so judges do not depend on another repository or network request.
 The critical path is intentionally one scenario. Broad DIDzM integration,
 production identity, real assets, production legal determinations, Filecoin
 hosting, and additional verticals are outside the submission click path.
+
+The immediate Priority Zero spine is persistent CockroachDB agent memory,
+CockroachDB Distributed Vector Indexing, read-only CockroachDB Managed MCP
+(Model Context Protocol) verification, the public guided flow, and a public
+demonstration video under three minutes. AWS (Amazon Web Services) transport is
+already live. The downstream capabilities must receive current evidence before
+operations unlock or the submission describes them as live.
 
 See [`ROADMAP.md`](ROADMAP.md) for the dated build gates.
 
