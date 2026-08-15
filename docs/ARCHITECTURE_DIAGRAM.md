@@ -1,18 +1,24 @@
 # Architecture diagram
 
+> This diagram shows the target TestWired topology, not verified current
+> connectivity. The UI and AWS infrastructure exist as source, no public
+> endpoint is verified, and every external provider remains `SOURCE_ONLY`,
+> `PLANNED`, or `NOT_CONNECTED`. See
+> [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+
 ```mermaid
 flowchart LR
     Judge["Judge browser\nSynthetic TestTown case"]
-    Web["Public Judge UI\nTESTWIRED"]
-    Gateway["AWS API Gateway\nGenerated HTTPS front door"]
-    Lambda["AWS Lambda\nBounded agent orchestrator"]
-    Bedrock["AWS Bedrock\nTitan embedding plus bounded reasoning"]
-    Cockroach["CockroachDB Cloud\nSessions, events, vectors, exact state, receipts"]
-    MCP["Managed MCP verifier\nRead-only and cluster-scoped"]
+    Web["Judge UI source\nTESTWIRED, SOURCE_ONLY"]
+    Gateway["AWS API Gateway target\nNo endpoint verified"]
+    Lambda["AWS Lambda target\nSOURCE_ONLY"]
+    Bedrock["AWS Bedrock target\nPLANNED"]
+    Cockroach["CockroachDB Cloud target\nPLANNED"]
+    MCP["Managed MCP verifier target\nPLANNED"]
     Evaluator["Private evidence evaluator\nMinimum disclosure only"]
-    Midnight["Midnight test network\nCommitment and proof receipt"]
+    Midnight["Midnight test network target\nPLANNED"]
     Evidence["Encrypted synthetic evidence\nVersioned canonical artifacts"]
-    Mocks["DIDz, AgenticDID, RWAz\nExplicit MOCK providers"]
+    Mocks["DIDz, AgenticDID, RWAz fixtures\nMOCK, callable providers NOT_CONNECTED"]
 
     Judge --> Web
     Web --> Gateway
@@ -29,23 +35,23 @@ flowchart LR
 
 ## The three planes
 
-### Memory plane
+### Target memory plane
 
-CockroachDB stores the durable session history, append-only events, privacy-safe
-summaries, vectors, exact property state, rebuild generations, and receipts. It is
-the system a fresh agent process uses to resume work.
+CockroachDB will store the durable session history, append-only events,
+privacy-safe summaries, vectors, exact property state, rebuild generations, and
+receipts. It will be the system a fresh agent process uses to resume work.
 
-### Trust plane
+### Target trust plane
 
-Midnight verifies commitments or a narrow private predicate on a real test network.
-It does not store the private deed or replace CockroachDB. DIDz, AgenticDID, and
-RWAz are synthetic mock adapters for this submission.
+Midnight will verify commitments or a narrow private predicate on a supported
+test network. It will not store the private deed or replace CockroachDB. DIDz,
+AgenticDID, and RWAz remain synthetic mock fixtures in the target submission.
 
-### Execution plane
+### Target execution plane
 
-API Gateway gives the browser an HTTPS front door. Lambda performs bounded,
-allowlisted orchestration. Bedrock creates privacy-safe embeddings and the bounded
-agent explanation. Secrets remain server-side.
+API Gateway will give the browser an HTTPS front door. Lambda will perform
+bounded, allowlisted orchestration. Bedrock will create privacy-safe embeddings
+and the bounded agent explanation. Secrets will remain server-side.
 
 ## Critical rule
 

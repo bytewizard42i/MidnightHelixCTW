@@ -1,14 +1,15 @@
 import { useEffect, useRef } from "react";
 import type {
-  ApiResponseEnvelope,
-  JsonObject,
-  JsonPrimitive,
-} from "../api/types";
+  EvidenceDisplayFieldId,
+  EvidenceDisplayFields,
+} from "../receiptEvidence";
 import { StatusBadge } from "./StatusBadge";
 
 export interface EvidenceSnapshot {
   readonly operation: string;
-  readonly response: ApiResponseEnvelope<JsonObject>;
+  readonly httpStatus: number;
+  readonly receivedAt: string;
+  readonly fields: EvidenceDisplayFields;
 }
 
 interface EvidenceDrawerProps {
@@ -19,90 +20,28 @@ interface EvidenceDrawerProps {
   readonly fetchingReceipt: boolean;
 }
 
-const EVIDENCE_ROWS = [
-  {
-    label: "AWS request",
-    keys: ["requestId", "awsRequestId"],
-  },
-  {
-    label: "Run",
-    keys: ["runId"],
-  },
-  {
-    label: "Session",
-    keys: ["sessionId", "sourceSessionId", "recalledFromSessionId"],
-  },
-  {
-    label: "CockroachDB memory",
-    keys: ["memoryId", "recalledMemoryId", "eventId", "summaryId"],
-  },
-  {
-    label: "Vector evidence",
-    keys: ["vectorId", "vectorDistance", "embeddingModel"],
-  },
-  {
-    label: "Midnight receipt",
-    keys: ["midnightReceiptId", "midnightTransactionId", "proofReceiptId"],
-  },
-  {
-    label: "Projection generation",
-    keys: ["projectionGeneration", "activeGenerationId", "generationId"],
-  },
-  {
-    label: "Operation receipt",
-    keys: ["receiptId"],
-  },
-  {
-    label: "Protected fields returned",
-    keys: ["protectedFieldsReturned"],
-  },
-  {
-    label: "Managed MCP verification",
-    keys: ["managedMcpReceiptId", "mcpInspectionId"],
-  },
-] as const;
-
-function primitiveAtAllowedKey(
-  value: unknown,
-  allowedKeys: readonly string[],
-): JsonPrimitive | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  for (const [key, childValue] of Object.entries(value)) {
-    if (
-      allowedKeys.includes(key) &&
-      (typeof childValue === "string" ||
-        typeof childValue === "number" ||
-        typeof childValue === "boolean" ||
-        childValue === null)
-    ) {
-      return childValue;
-    }
-  }
-
-  for (const childValue of Object.values(value)) {
-    const nestedMatch = primitiveAtAllowedKey(childValue, allowedKeys);
-    if (nestedMatch !== undefined) {
-      return nestedMatch;
-    }
-  }
-  return undefined;
-}
-
-function evidenceValue(
-  evidence: EvidenceSnapshot | null,
-  allowedKeys: readonly string[],
-): JsonPrimitive | undefined {
-  if (!evidence) {
-    return undefined;
-  }
-  if (allowedKeys.includes("requestId") && evidence.response.requestId) {
-    return evidence.response.requestId;
-  }
-  return primitiveAtAllowedKey(evidence.response.data, allowedKeys);
-}
+const EVIDENCE_ROWS: readonly {
+  readonly label: string;
+  readonly field: EvidenceDisplayFieldId;
+}[] = [
+  { label: "Current API response request", field: "apiRequestId" },
+  { label: "Build stage", field: "buildStage" },
+  { label: "Deployment evidence", field: "deploymentEvidence" },
+  { label: "Release commit", field: "releaseCommit" },
+  { label: "Run", field: "runId" },
+  { label: "Scenario", field: "scenarioId" },
+  { label: "Receipt operation", field: "receiptOperation" },
+  { label: "Receipt created", field: "receiptCreatedAt" },
+  { label: "Session", field: "sessionId" },
+  { label: "Canonical memory", field: "canonicalMemoryId" },
+  { label: "Semantic distance", field: "semanticDistance" },
+  { label: "Evidence commitment", field: "evidenceCommitment" },
+  { label: "Midnight receipt", field: "midnightReceiptId" },
+  { label: "Projection generation", field: "projectionGenerationId" },
+  { label: "Operation receipt", field: "receiptId" },
+  { label: "Protected fields returned", field: "protectedFieldsReturned" },
+  { label: "Managed MCP verification", field: "managedMcpReceiptId" },
+];
 
 export function EvidenceDrawer({
   open,
@@ -144,15 +83,21 @@ export function EvidenceDrawer({
       </div>
 
       <p className="evidence-drawer__boundary">
-        Expected fixture values are never substituted for service evidence. A field
-        stays <strong>NOT AVAILABLE</strong> until a real API response supplies it.
+        Only exact, runtime-validated canonical fields are displayed. A field
+        stays <strong>NOT AVAILABLE</strong> until the matching API response
+        supplies it at its reviewed path.
       </p>
 
       <dl className="evidence-list">
         {EVIDENCE_ROWS.map((row) => {
-          const value = evidenceValue(evidence, row.keys);
+          const value = evidence?.fields[row.field];
           return (
-            <div className="evidence-list__row" key={row.label}>
+            <div
+              className="evidence-list__row"
+              key={row.field}
+              data-narration-key="evidence"
+              tabIndex={0}
+            >
               <dt>{row.label}</dt>
               <dd>
                 {value === undefined || value === null ? (
@@ -169,7 +114,7 @@ export function EvidenceDrawer({
       <div className="evidence-drawer__footer">
         <p>
           {evidence
-            ? `${evidence.operation} · HTTP ${evidence.response.httpStatus} · ${evidence.response.receivedAt}`
+            ? `${evidence.operation} · HTTP ${evidence.httpStatus} · ${evidence.receivedAt}`
             : "No operational API response has been received in this browser session."}
         </p>
         <button

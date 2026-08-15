@@ -1,5 +1,7 @@
 # MHelixCTW Hackathon Roadmap
 
+**Last updated:** August 14, 2026
+
 **Internal submission target:** Sunday, August 16, 2026, 9:00 PM EDT
 **Official deadline:** Tuesday, August 18, 2026, 5:00 PM EDT
 **Judging availability:** Keep the application available through September 15,
@@ -7,7 +9,7 @@
 
 ## Outcome
 
-Ship one public TestWired application that proves all of the following:
+The release target is one public TestWired application that proves all of the following:
 
 1. A fresh Ai-agent session retrieves useful prior memory from CockroachDB.
 2. CockroachDB combines vector recall with exact transactional state.
@@ -18,6 +20,18 @@ Ship one public TestWired application that proves all of the following:
 6. CockroachDB Managed MCP independently inspects the memory and rebuild
    receipt in read-only mode.
 7. AWS meaningfully hosts the agent path.
+
+## Actual evidence snapshot, August 14
+
+| Area | Current state |
+| --- | --- |
+| Public repository and synthetic fixture baseline | `VERIFIED_LOCAL` at the previously checked source revision; repeat all release checks after the current work is committed. |
+| Judge UI | `SOURCE_ONLY`; guided presentation, narration, request guards, and evidence validation exist locally, but no public URL is verified. |
+| AWS API and Lambda | `SOURCE_ONLY`; the first create rolled back before an endpoint and the local OpenAPI fix has not been redeployed. |
+| CockroachDB, Bedrock, Midnight, reconstruction, Managed MCP | `PLANNED` and `NOT_CONNECTED`. |
+| DIDz, AgenticDID, RWAz | Synthetic fixtures are `MOCK`; callable provider connections remain `NOT_CONNECTED`. |
+
+The Friday live-service exit gate has not been met.
 
 ## Non-negotiable scope
 
@@ -56,15 +70,25 @@ Deferred until after submission:
       media.
 - [x] Define the TestWired and mock boundaries.
 - [x] Select the property question from the existing Helix slide deck.
-- [ ] Create the clean standalone Git repository and public GitHub remote.
-- [ ] Import the exact adapter snapshot with provenance.
-- [ ] Bundle the minimal TestTown fixture with a pinned source commit.
-- [ ] Run the first secret, license, and media-rights checks.
+- [x] Create the clean standalone Git repository and public GitHub remote.
+- [x] Import the exact adapter snapshot with provenance.
+- [x] Bundle the minimal TestTown fixture with a pinned source commit.
+- [x] Run the first secret, license, and media-rights checks at the August 13 baseline.
+- [ ] Repeat source, secret, license, fixture, and media checks at the release commit.
 
 Exit gate: a public clone contains the license, provenance, synthetic fixture,
 architecture, roadmap, and green offline verification.
 
 ## Friday, August 14: live memory and AWS
+
+### Actual Friday status
+
+The first AWS create was attempted and rolled back before API Gateway produced
+an endpoint. The transformed OpenAPI server and CORS defects were corrected in
+local source, and a built-template contract was added and validated. No
+redeployment has succeeded. The guided UI and ordered response-evidence source
+advanced locally, but CockroachDB, Bedrock, Midnight, reconstruction, and
+Managed MCP remain disconnected.
 
 ### CockroachDB
 

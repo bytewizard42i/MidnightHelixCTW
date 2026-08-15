@@ -1,14 +1,19 @@
 import type {
   ApiResponseEnvelope,
+  CloseSessionResponse,
+  CreateRunResponse,
   HealthResponse,
   JsonObject,
+  JudgeActionResponse,
   JudgeApiClient,
-  JudgeMutationResponse,
+  RecallResponse,
+  ReceiptResponse,
   ScenariosResponse,
   StatusResponse,
 } from "./types";
 
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 
 export class JudgeApiConfigurationError extends Error {
   constructor(message: string) {
@@ -69,13 +74,23 @@ export function normalizePublicApiBaseUrl(
   return parsedUrl.toString().replace(/\/$/, "");
 }
 
-function createIdempotencyKey(): string {
+export function createPublicIdempotencyKey(): string {
   if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
     throw new JudgeApiConfigurationError(
       "This browser cannot create a cryptographically random idempotency key.",
     );
   }
   return `mhelix-web:${crypto.randomUUID()}`;
+}
+
+function validatedIdempotencyKey(configuredKey: string | undefined): string {
+  const idempotencyKey = configuredKey ?? createPublicIdempotencyKey();
+  if (!IDEMPOTENCY_KEY_PATTERN.test(idempotencyKey)) {
+    throw new JudgeApiConfigurationError(
+      "The mutation idempotency key must contain 16 to 128 safe characters.",
+    );
+  }
+  return idempotencyKey;
 }
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -102,26 +117,41 @@ export function createJudgeApiClient(baseUrl: string): JudgeApiClient {
     throw new JudgeApiConfigurationError("VITE_API_BASE_URL is not configured.");
   }
 
-  async function request<ResponseBody extends JsonObject>(
+  async function request<ResponseBody>(
     path: string,
     options: {
       readonly method?: "GET" | "POST";
       readonly body?: JsonObject;
       readonly idempotentMutation?: boolean;
+      readonly idempotencyKey?: string;
+      readonly signal?: AbortSignal;
     } = {},
   ): Promise<ApiResponseEnvelope<ResponseBody>> {
     const abortController = new AbortController();
-    const timeoutIdentifier = window.setTimeout(
-      () => abortController.abort(),
+    let timedOut = false;
+    const timeoutIdentifier = globalThis.setTimeout(
+      () => {
+        timedOut = true;
+        abortController.abort();
+      },
       REQUEST_TIMEOUT_MILLISECONDS,
     );
+    const cancelFromCaller = () => abortController.abort();
+    if (options.signal?.aborted) {
+      cancelFromCaller();
+    } else {
+      options.signal?.addEventListener("abort", cancelFromCaller, { once: true });
+    }
     const method = options.method ?? "GET";
     const headers = new Headers({ Accept: "application/json" });
 
     if (method === "POST") {
       headers.set("Content-Type", "application/json");
       if (options.idempotentMutation) {
-        headers.set("Idempotency-Key", createIdempotencyKey());
+        headers.set(
+          "Idempotency-Key",
+          validatedIdempotencyKey(options.idempotencyKey),
+        );
       }
     }
 
@@ -135,11 +165,20 @@ export function createJudgeApiClient(baseUrl: string): JudgeApiClient {
         redirect: "error",
         signal: abortController.signal,
       });
-      let requestId = response.headers.get("x-request-id") ?? undefined;
+      const headerRequestId = response.headers.get("x-request-id") ?? undefined;
+      let requestId = headerRequestId;
       const contentType = response.headers.get("content-type") ?? "";
-      const responseBody: unknown = contentType.includes("application/json")
-        ? await response.json()
-        : null;
+      let responseBody: unknown = null;
+      if (contentType.includes("application/json")) {
+        try {
+          responseBody = await response.json();
+        } catch {
+          throw new JudgeApiRequestError(
+            "The TestWired API returned malformed JSON. No result was accepted.",
+            { httpStatus: response.status, requestId },
+          );
+        }
+      }
       if (!requestId && isJsonObject(responseBody) && typeof responseBody.requestId === "string") {
         requestId = responseBody.requestId;
       }
@@ -160,6 +199,7 @@ export function createJudgeApiClient(baseUrl: string): JudgeApiClient {
       return {
         data: responseBody as ResponseBody,
         httpStatus: response.status,
+        headerRequestId,
         requestId,
         receivedAt: new Date().toISOString(),
       };
@@ -169,56 +209,64 @@ export function createJudgeApiClient(baseUrl: string): JudgeApiClient {
       }
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new JudgeApiRequestError(
-          "The TestWired API did not respond within 15 seconds.",
+          timedOut
+            ? "The TestWired API did not respond within 15 seconds."
+            : "The TestWired API request was cancelled before a result was accepted.",
         );
       }
       throw new JudgeApiRequestError(
         "The TestWired API could not be reached. No operation was recorded.",
       );
     } finally {
-      window.clearTimeout(timeoutIdentifier);
+      globalThis.clearTimeout(timeoutIdentifier);
+      options.signal?.removeEventListener("abort", cancelFromCaller);
     }
   }
 
   return {
-    health: () => request<HealthResponse>("/healthz"),
-    status: () => request<StatusResponse>("/api/v1/status"),
-    scenarios: () => request<ScenariosResponse>("/api/v1/judge/scenarios"),
-    startRun: ({ scenarioId, agentDidz }) =>
-      request<JudgeMutationResponse>("/api/v1/judge/runs", {
+    health: (options) => request<HealthResponse>("/healthz", options),
+    status: (options) => request<StatusResponse>("/api/v1/status", options),
+    scenarios: (options) =>
+      request<ScenariosResponse>("/api/v1/judge/scenarios", options),
+    startRun: ({ scenarioId, agentDidz, idempotencyKey }) =>
+      request<CreateRunResponse>("/api/v1/judge/runs", {
         method: "POST",
         idempotentMutation: true,
+        idempotencyKey,
         body: agentDidz ? { scenarioId, agentDidz } : { scenarioId },
       }),
-    closeSession: ({ runId, sessionId }) =>
-      request<JudgeMutationResponse>(
+    closeSession: ({ runId, sessionId, idempotencyKey }) =>
+      request<CloseSessionResponse>(
         `/api/v1/judge/runs/${encodeURIComponent(runId)}/sessions/close`,
         {
           method: "POST",
           idempotentMutation: true,
+          idempotencyKey,
           body: { sessionId },
         },
       ),
-    recall: ({ runId, query, agentDidz }) =>
-      request<JudgeMutationResponse>(
+    recall: ({ runId, query, agentDidz, idempotencyKey }) =>
+      request<RecallResponse>(
         `/api/v1/judge/runs/${encodeURIComponent(runId)}/recall`,
         {
           method: "POST",
           idempotentMutation: true,
+          idempotencyKey,
           body: agentDidz ? { query, agentDidz } : { query },
         },
       ),
-    executeAction: ({ runId, action, agentDidz }) =>
-      request<JudgeMutationResponse>(
+    executeAction: ({ runId, action, agentDidz, idempotencyKey }) =>
+      request<JudgeActionResponse>(
         `/api/v1/judge/runs/${encodeURIComponent(runId)}/actions`,
         {
           method: "POST",
           idempotentMutation: true,
+          idempotencyKey,
           body: agentDidz ? { action, agentDidz } : { action },
         },
       ),
     receipt: (receiptId) =>
-      request<JudgeMutationResponse>(
+      request<ReceiptResponse>(
         `/api/v1/judge/receipts/${encodeURIComponent(receiptId)}`,
       ),
   };

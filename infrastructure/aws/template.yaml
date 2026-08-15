@@ -109,20 +109,22 @@ Resources:
           title:
             Fn::Sub: ${AWS::StackName} TestWired API
           version: "1.0.0"
+        servers:
+          - url: "/"
+        x-amazon-apigateway-cors:
+          allowOrigins: !Split [",", !Ref PublicAllowedOrigins]
+          allowHeaders:
+            - Content-Type
+            - Idempotency-Key
+          allowMethods:
+            - GET
+            - POST
+            - OPTIONS
+          exposeHeaders:
+            - X-Request-Id
+          maxAge: 300
+          allowCredentials: false
         paths: {}
-      CorsConfiguration:
-        AllowOrigins: !Split [",", !Ref PublicAllowedOrigins]
-        AllowHeaders:
-          - Content-Type
-          - Idempotency-Key
-        AllowMethods:
-          - GET
-          - POST
-          - OPTIONS
-        ExposeHeaders:
-          - X-Request-Id
-        MaxAge: 300
-        AllowCredentials: false
       DefaultRouteSettings:
         ThrottlingBurstLimit: 2
         ThrottlingRateLimit: 1

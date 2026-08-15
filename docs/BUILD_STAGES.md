@@ -8,24 +8,31 @@ public form.
 | Stage | Meaning |
 | --- | --- |
 | DemoLand | Product rules and interface are simulated. External mechanisms are mocked. |
-| TestWired | The same product calls real test networks, proof servers, cloud services, and test APIs. Data, accounts, and stakes remain synthetic. |
+| TestWired | Isolated synthetic-data build stage and target environment. The label does not prove that any provider is connected. |
 | RealDeal | Production mechanisms, production endpoints, and real users or value. |
 
-MHelixCTW targets **TestWired**.
+MHelixCTW targets **TestWired**. During TestWired assembly, source and local UI
+may exist while providers remain `SOURCE_ONLY`, `PLANNED`, or `NOT_CONNECTED`.
+A capability becomes `LIVE_TESTWIRED` only after the named test or cloud service
+succeeds and current evidence is recorded.
 
 ## Evidence labels
 
-Evidence labels apply to individual outputs, not the entire application:
+Machine evidence labels apply to individual capabilities and outputs, not the
+entire application:
 
 | Label | Meaning |
 | --- | --- |
-| `MOCK` | Deterministic synthetic provider or simulated external result |
-| `REALDEAL_TEST` | Real mechanism called against test or cloud infrastructure with synthetic data |
-| `REALDEAL` | Verified production mechanism with production data or value |
+| `LIVE_TESTWIRED` | Named real test or cloud service called successfully with synthetic data and current evidence recorded |
+| `VERIFIED_LOCAL` | Stated local check passed, without proving public deployment or live cloud integration |
+| `MOCK` | Deterministic synthetic fixture or local behavior that does not call the named external system |
+| `SOURCE_ONLY` | Source or infrastructure exists, but successful execution in the named environment is not evidenced |
 | `PLANNED` | Capability is not connected and cannot support a decision |
 
-The same application may mix labels. Every response must identify the label for
-each contributing subsystem.
+Connection state is reported separately as `CONNECTED` or `NOT_CONNECTED`.
+`REALDEAL_TEST` may appear only as a human-facing evidence label on one
+successful output carrying a sanitized real test-service receipt. It is never a
+build stage or a substitute for the machine label `LIVE_TESTWIRED`.
 
 ## House rules
 
@@ -39,17 +46,21 @@ each contributing subsystem.
 6. `REALDEAL_TEST` requires an inspectable request, transaction, proof, or
    database receipt from the named test mechanism.
 
-## Submission labels
+## Display gates
 
-The judge interface uses these exact phrases:
+The judge interface may always use these boundary phrases:
 
 - `TESTWIRED`
-- `PUBLIC TEST ENVIRONMENT`
 - `SYNTHETIC DATA ONLY`
-- `LIVE COCKROACHDB CLOUD - TEST DATA`
-- `LIVE AWS API GATEWAY + LAMBDA`
-- `LIVE MIDNIGHT TEST NETWORK`, only after a real receipt
 - `MOCK IDENTITY PROVIDER`
 - `MOCK AGENT AUTHORITY`
 - `MOCK ASSET IDENTITY`
 - `NOT CONNECTED`, for any unavailable planned subsystem
+
+The following phrases are gated and must not appear as current claims until the
+truth ledger records their required evidence:
+
+- `PUBLIC TEST ENVIRONMENT`, only after a signed-out public URL is verified;
+- `LIVE COCKROACHDB CLOUD - TEST DATA`, only after live query and receipt evidence;
+- `LIVE AWS API GATEWAY + LAMBDA`, only after the generated endpoint and runtime evidence pass;
+- `LIVE MIDNIGHT TEST NETWORK`, only after a real supported-network receipt.

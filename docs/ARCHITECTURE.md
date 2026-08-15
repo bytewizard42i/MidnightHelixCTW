@@ -2,9 +2,16 @@
 
 ## Product boundary
 
-MHelixCTW is the TestWired, standalone edition of HelixCTW. It demonstrates
-HelixCTW as the memory and data layer for DIDzM while keeping the other DIDzM
-pillars as explicit synthetic providers.
+MHelixCTW is designed as the TestWired, standalone edition of HelixCTW. Its
+target flow demonstrates HelixCTW as the memory and data layer for DIDzM while
+keeping the other DIDzM pillars as explicit synthetic providers.
+
+> **Current topology, 2026-08-14:** The judge UI and AWS infrastructure exist as
+> source. No public UI or API endpoint is verified. AWS Lambda and API Gateway
+> remain `SOURCE_ONLY`; CockroachDB, Bedrock, Midnight, reconstruction, and
+> Managed MCP remain `PLANNED`; all callable providers remain `NOT_CONNECTED`.
+> The topology below is the target design, not evidence of current connectivity.
+> See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 The repository is designed around one property question:
 
@@ -13,7 +20,7 @@ The repository is designed around one property question:
 It does not make legal title determinations, execute transfers, authenticate
 real people, or expose real property records.
 
-## System map
+## Target system map
 
 ```text
 Judge browser
@@ -51,7 +58,7 @@ Read-only CockroachDB Managed MCP
 
 ### CockroachDB Cloud: durable agent memory
 
-CockroachDB is causally necessary to the demonstration. It stores:
+In the completed flow, CockroachDB is causally necessary. It will store:
 
 - Session A and Session B identities and closure state
 - Typed memory events and compact summaries
@@ -84,7 +91,8 @@ can verify restored information but cannot recreate missing ciphertext.
 
 ### AWS: public agent path
 
-API Gateway is the public front door. Lambda is the bounded coordinator that:
+In the target public path, API Gateway will be the front door and Lambda will be
+the bounded coordinator that:
 
 1. validates the fixed judge request;
 2. verifies the TestWired environment marker;
@@ -94,8 +102,8 @@ API Gateway is the public front door. Lambda is the bounded coordinator that:
 6. commits the response evidence and receipt transactionally; and
 7. returns a redacted, size-bounded result.
 
-Secrets remain in AWS Secrets Manager. The Lambda role receives only the exact
-database secret, model resources, and logging permissions it requires.
+Secrets will remain in AWS Secrets Manager. The Lambda role will receive only
+the exact database secret, model resources, and logging permissions it requires.
 
 ### Mock DIDzM pillars
 
@@ -110,9 +118,9 @@ integrations:
 Every value from these providers is labeled `MOCK`. They cannot silently claim
 `REALDEAL_TEST` merely because CockroachDB or Midnight is live.
 
-## Privacy model
+## Target privacy model
 
-The demo separates four data classes:
+The completed demo will separate four data classes:
 
 | Data class | Location |
 | --- | --- |
@@ -153,7 +161,7 @@ The public interface never deletes, drops, or truncates canonical data.
 - Bedrock unavailable: return a bounded provider failure, not invented output
 - CockroachDB unavailable: the agent cannot claim memory recall
 
-## Evidence shown to judges
+## Evidence required before a live judge claim
 
 - Release Git commit
 - AWS region and request identifier

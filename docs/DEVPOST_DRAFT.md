@@ -1,5 +1,12 @@
 # Devpost draft
 
+> **DO NOT PUBLISH IN THIS CURRENT FORM.** The sections below describe the
+> target submission flow. Replace every provider claim from current release
+> evidence before publication. As of 2026-08-14, the judge UI and AWS
+> infrastructure exist as source, no public endpoint is verified, and cloud,
+> database, proof, reconstruction, and Managed MCP capabilities remain
+> `SOURCE_ONLY`, `PLANNED`, or `NOT_CONNECTED`.
+
 ## Project title
 
 **HelixCTW: TestWired Private Agent Memory**
@@ -10,10 +17,11 @@
 
 ## Short description
 
-MidnightHelixCTW is a reconstructible private memory layer for Ai agents. A fresh
-AWS-hosted agent recalls prior work from CockroachDB, semantically locates the
-right synthetic property evidence, verifies a narrow private result through a
-Midnight test-network proof, and returns the answer without receiving the deed.
+MidnightHelixCTW is designed as a reconstructible private memory layer for Ai
+agents. In the target release, a fresh AWS-hosted agent will recall prior work
+from CockroachDB, semantically locate the right synthetic property evidence,
+verify a narrow private result through a Midnight test-network proof, and return
+the answer without receiving the deed.
 
 ## Inspiration
 
@@ -25,24 +33,29 @@ the owner identity, and every related record into its model context.
 
 ## What it does
 
-The guided TestTown scenario asks whether a fictional farmhouse is unencumbered.
-Session A records a privacy-safe review plan and committed evidence references.
-Session B is a fresh agent process that recalls the earlier work from CockroachDB.
-Cockroach vector search locates the relevant safe memory, exact relational state
-checks the current scope, and Midnight verifies the approved private predicate.
+The target guided TestTown scenario asks whether a fictional farmhouse is
+unencumbered. Session A will record a privacy-safe review plan and committed
+evidence references. Session B will be a fresh agent process that recalls the
+earlier work from CockroachDB. Cockroach vector search will locate the relevant
+safe memory, exact relational state will check the current scope, and Midnight
+will verify the approved private predicate.
 
-The agent receives:
+The completed target flow will return:
 
 - authorization result;
 - verified title predicate;
 - memory, proof, and transaction receipts;
 - no private deed text.
 
-An unauthorized request is denied with zero protected fields disclosed. A guided
-rebuild creates and verifies a new disposable memory projection, activates it
-atomically, and returns the same committed result.
+An unauthorized request must be denied with zero protected fields disclosed. A
+guided rebuild must create and verify a new disposable memory projection,
+activate it atomically, and return the same committed result.
 
 ## How we built it
+
+The list below is the target service composition, not a current live-integration
+claim. Current status remains governed by
+[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 - CockroachDB Cloud for persistent sessions, memory events, safe summaries,
   vectors, exact state, projection generations, and receipts;
@@ -58,13 +71,13 @@ atomically, and returns the same committed result.
 Every provider is visibly labeled `LIVE TESTWIRED`, `VERIFIED LOCAL`, `MOCK`,
 `SOURCE ONLY`, or `PLANNED`. There is no silent live-to-mock fallback.
 
-## Meaningful CockroachDB tool use
+## Required meaningful CockroachDB tool use before publication
 
-1. **Distributed vector indexing** is in the live recall path. Session B creates a
-   real query embedding, searches stored safe summaries, and shows distance plus
-   source-memory identifiers.
-2. **Managed MCP** is used by a read-only, cluster-scoped evidence verifier to
-   inspect the final session, projection generation, and action receipt.
+1. **Distributed vector indexing** must be in the live recall path. Session B
+   must create a real query embedding, search stored safe summaries, and show
+   distance plus source-memory identifiers.
+2. **Managed MCP** must be used by a read-only, cluster-scoped evidence verifier
+   to inspect the final session, projection generation, and action receipt.
 
 ## Why CockroachDB matters
 

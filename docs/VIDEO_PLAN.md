@@ -5,6 +5,12 @@ Target runtime: 2 minutes 35 seconds to 2 minutes 45 seconds.
 The final video must show the application functioning. Vision slides may explain
 the architecture briefly, but they cannot substitute for live memory evidence.
 
+> **Recording gate, 2026-08-14:** Do not record or publish the execution script
+> while the public URL is absent or any depicted live provider lacks current
+> receipt evidence. Remove or visibly relabel an unavailable segment rather than
+> simulating it. The current source-only UI and disconnected providers do not yet
+> satisfy this gate.
+
 ## Script
 
 ### 0:00 to 0:15, the problem
@@ -92,6 +98,10 @@ End card:
 ## Recording checklist
 
 - public URL and public repository visible;
+- guided-demo start and truthful provider lock state visible before any live
+  operation;
+- browser voice status is shown honestly; the recording does not rely on Web
+  Speech as its only narration or caption source;
 - captions burned in or uploaded;
 - large readable text at 1080p;
 - no copyrighted music;

@@ -16,7 +16,13 @@
 
 All people, organizations, assets, and records are synthetic.
 
-## What the judge should learn
+> **Current execution gate, 2026-08-14:** This is the release-target script.
+> The current source-only interface keeps mutation checkpoints locked, no public
+> endpoint is verified, and Managed MCP inspection is unavailable. Do not
+> present the results below as executed until every named provider is promoted
+> with current evidence in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+
+## What the completed live flow should teach
 
 1. The conversation can disappear while durable agent memory remains.
 2. CockroachDB semantic recall changes what a fresh agent knows.
@@ -25,7 +31,7 @@ All people, organizations, assets, and records are synthetic.
 5. HelixCTW can rebuild a disposable recall projection and verify continuity.
 6. Managed MCP gives a judge an independent, read-only evidence surface.
 
-## Guided interface
+## Target guided interface
 
 The public interface should present one primary button at a time and explain the
 result in ordinary language.
@@ -164,12 +170,15 @@ Expected behavior:
 
 - return the same synthetic answer;
 - show the same canonical memory and evidence commitments;
-- show the new projection generation and rebuild receipt;
+- show the rebuilt projection generation and rebuild receipt;
+- show new accepted action and Midnight receipt identifiers in the same
+  evidence lineage;
 - perform no additional disclosure.
 
-### Step 8: Independent Managed MCP verification
+### Step 8: Planned independent Managed MCP verification
 
-The operator-side judge evidence uses read-only, single-cluster Managed MCP to
+After its separate response contract is implemented and verified, the
+operator-side judge evidence will use read-only, single-cluster Managed MCP to
 inspect allowlisted facts:
 
 - Session A closed before Session B recall
@@ -190,9 +199,13 @@ browser.
 - Use the unauthorized agent and verify the one-bit query is denied.
 - Change the semantic wording and verify the same relevant memory is recalled.
 
-## Truth statement
+## Conditional release truth statement
 
-> MHelixCTW demonstrates real cloud and test-network mechanisms with entirely
+Do not use the following submission language until every referenced mechanism
+has current promotion evidence in the truth ledger:
+
+> When fully evidenced, MHelixCTW demonstrates real cloud and test-network
+> mechanisms with entirely
 > fictional data. DIDz, AgenticDID, and RWAz are mock providers in this build.
 > Midnight verifies commitments and permitted predicates; it does not store the
 > source deed. CockroachDB is the persistent agent-memory layer and the

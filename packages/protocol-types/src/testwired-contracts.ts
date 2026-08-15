@@ -9,6 +9,9 @@
  */
 
 export const RESPONSE_SCHEMA_VERSION = "mhelixctw/api/v1" as const;
+export const RESPONSE_IDENTIFIER_PATTERN_SOURCE =
+  "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" as const;
+export const RELEASE_COMMIT_PATTERN_SOURCE = "^[0-9a-f]{40}$" as const;
 export const IDEMPOTENCY_HEADER = "Idempotency-Key" as const;
 export const MAXIMUM_REQUEST_BODY_BYTES = 4096 as const;
 export const IDEMPOTENCY_KEY_PATTERN_SOURCE =
@@ -47,6 +50,22 @@ export type ProviderRuntimeEvidence = ImplementationStage | "REALDEAL_TEST";
  * count, never the protected values. The count must remain zero.
  */
 export type ProtectedFieldsReturned = 0;
+
+/**
+ * A release commit is accepted from the wire only after runtime validation
+ * against RELEASE_COMMIT_PATTERN_SOURCE.
+ */
+export type ReleaseCommit = string;
+
+export const DENIED_PROTECTED_FIELDS = [
+  "deed.full_text",
+  "mortgage.full_record",
+  "owner.birth_date",
+  "owner.private_contact_information",
+] as const;
+
+export type DeniedProtectedField =
+  (typeof DENIED_PROTECTED_FIELDS)[number];
 
 export const PROVIDER_IDS = [
   "aws",
@@ -130,6 +149,11 @@ export const JUDGE_ACTIONS = [
 ] as const;
 
 export type JudgeAction = (typeof JUDGE_ACTIONS)[number];
+export type JudgeReceiptOperation =
+  | "create_run"
+  | "close_session"
+  | "recall"
+  | JudgeAction;
 export type JudgeAgentDidz =
   | typeof MORROW_SCENARIO.authorizedAgentDidz
   | typeof MORROW_SCENARIO.unauthorizedAgentDidz;
@@ -181,7 +205,7 @@ export interface HealthResponse
   readonly handler: "READY";
   readonly dependenciesConnected: boolean;
   readonly region: string;
-  readonly releaseCommit: string;
+  readonly releaseCommit: ReleaseCommit;
   readonly limits: {
     readonly maxRequestBytes: number;
     readonly maxResponseBytes: number;
@@ -192,7 +216,7 @@ export interface HealthResponse
 export interface StatusResponse
   extends ApiResponseBase,
     TestWiredEvidenceFields {
-  readonly releaseCommit: string;
+  readonly releaseCommit: ReleaseCommit;
   readonly currentAvailability: ProviderConnection;
   readonly writeOperations: "BLOCKED_UNTIL_CONNECTED" | "ENABLED";
   readonly readyForMutations: boolean;
@@ -239,7 +263,8 @@ export interface CreateRunResponse extends ApiResponseBase {
   readonly scenarioId: typeof MORROW_SCENARIO.scenarioId;
   readonly session: SessionDescriptor;
   readonly buildStage: TestWiredBuildStage;
-  readonly deploymentEvidence: ImplementationStage;
+  readonly deploymentEvidence: "LIVE_TESTWIRED";
+  readonly releaseCommit: ReleaseCommit;
   readonly receiptId?: string;
   readonly protectedFieldsReturned: ProtectedFieldsReturned;
 }
@@ -253,8 +278,9 @@ export interface CloseSessionResponse extends ApiResponseBase {
   readonly session: SessionDescriptor & { readonly state: "CLOSED" };
   readonly canonicalMemoryIds: readonly string[];
   readonly buildStage: TestWiredBuildStage;
-  readonly deploymentEvidence: ImplementationStage;
-  readonly receiptId?: string;
+  readonly deploymentEvidence: "LIVE_TESTWIRED";
+  readonly releaseCommit: ReleaseCommit;
+  readonly receiptId: string;
   readonly protectedFieldsReturned: ProtectedFieldsReturned;
 }
 
@@ -269,7 +295,7 @@ export interface RecallMatch {
   readonly objectId: typeof MORROW_SCENARIO.resource;
   readonly permittedPredicate: typeof MORROW_SCENARIO.permittedPredicate;
   readonly semanticDistance?: number;
-  readonly projectionGenerationId?: string;
+  readonly projectionGenerationId: string;
 }
 
 export interface RecallResponse extends ApiResponseBase {
@@ -278,8 +304,9 @@ export interface RecallResponse extends ApiResponseBase {
   readonly query: string;
   readonly matches: readonly RecallMatch[];
   readonly buildStage: TestWiredBuildStage;
-  readonly deploymentEvidence: ImplementationStage;
-  readonly receiptId?: string;
+  readonly deploymentEvidence: "LIVE_TESTWIRED";
+  readonly releaseCommit: ReleaseCommit;
+  readonly receiptId: string;
   readonly protectedFieldsReturned: ProtectedFieldsReturned;
 }
 
@@ -293,13 +320,19 @@ export interface VerifiedPredicateResult {
   readonly predicate: typeof MORROW_SCENARIO.permittedPredicate;
   readonly value: boolean;
   readonly sourceTextDisclosed: false;
-  readonly midnightReceiptId?: string;
+  /** Canonical memory row used for this predicate result. */
+  readonly canonicalMemoryId: string;
+  /** Stable commitment that must remain equal across a projection rebuild. */
+  readonly evidenceCommitment: string;
+  /** Active recall-projection generation used for this result. */
+  readonly projectionGenerationId: string;
+  readonly midnightReceiptId: string;
 }
 
 export interface DeniedDisclosureResult {
   readonly kind: "DISCLOSURE_DENIED";
   readonly reason: string;
-  readonly requestedProtectedFields: readonly string[];
+  readonly requestedProtectedFields: readonly DeniedProtectedField[];
 }
 
 export interface ProjectionRebuildResult {
@@ -308,6 +341,7 @@ export interface ProjectionRebuildResult {
   readonly activeGenerationId: string;
   readonly canonicalSourceCount: number;
   readonly commitmentVerified: boolean;
+  readonly evidenceCommitment: string;
 }
 
 export type JudgeActionResult =
@@ -320,7 +354,8 @@ export interface JudgeActionResponse extends ApiResponseBase {
   readonly action: JudgeAction;
   readonly result: JudgeActionResult;
   readonly buildStage: TestWiredBuildStage;
-  readonly deploymentEvidence: ImplementationStage;
+  readonly deploymentEvidence: "LIVE_TESTWIRED";
+  readonly releaseCommit: ReleaseCommit;
   readonly receiptId: string;
   readonly protectedFieldsReturned: ProtectedFieldsReturned;
 }
@@ -333,18 +368,31 @@ export interface ProviderReceiptReference {
   readonly evidenceLabel?: OutputEvidenceLabel;
 }
 
-export interface JudgeReceipt {
+export interface JudgeReceiptBase {
   readonly receiptId: string;
   readonly runId: string;
   readonly scenarioId: typeof MORROW_SCENARIO.scenarioId;
-  readonly action?: JudgeAction;
   readonly buildStage: TestWiredBuildStage;
-  readonly deploymentEvidence: ImplementationStage;
-  readonly releaseCommit: string;
+  readonly deploymentEvidence: "LIVE_TESTWIRED";
+  readonly releaseCommit: ReleaseCommit;
   readonly createdAt: string;
   readonly providers: readonly ProviderReceiptReference[];
   readonly protectedFieldsReturned: ProtectedFieldsReturned;
 }
+
+export type JudgeReceipt =
+  | (
+      JudgeReceiptBase & {
+        readonly operation: "create_run" | "close_session" | "recall";
+        readonly action?: never;
+      }
+    )
+  | {
+      [Action in JudgeAction]: JudgeReceiptBase & {
+        readonly operation: Action;
+        readonly action: Action;
+      };
+    }[JudgeAction];
 
 export interface ReceiptResponse extends ApiResponseBase {
   readonly receipt: JudgeReceipt;

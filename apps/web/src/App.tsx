@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  createPublicIdempotencyKey,
   createJudgeApiClient,
   JudgeApiConfigurationError,
   JudgeApiRequestError,
@@ -8,12 +9,17 @@ import {
 import type {
   ApiResponseEnvelope,
   EvidenceLabel,
-  JsonObject,
   JudgeActionId,
   JudgeApiClient,
   JudgeMutationResponse,
   StatusResponse,
 } from "./api/types";
+import { LatestRequestGate, SynchronousOperationGate } from "./asyncGuards";
+import {
+  evaluateMutationReadiness,
+  operationCompletionRemainsReady,
+  REQUIRED_SYNTHETIC_SCENARIO_ID,
+} from "./connectionReadiness";
 import {
   EvidenceDrawer,
   type EvidenceSnapshot,
@@ -23,8 +29,17 @@ import {
   type ProviderDisplay,
 } from "./components/ProviderMatrix";
 import { StatusBadge } from "./components/StatusBadge";
+import { NarrationControls } from "./components/NarrationControls";
+import { useGuidedNarrator } from "./hooks/useGuidedNarrator";
+import {
+  buildValidatedMutationEvidenceFields,
+  validateReceiptResponseEvidence,
+} from "./receiptEvidence";
+import {
+  validateCheckpointResponseEvidence,
+  type VerifiedRunContext,
+} from "./responseEvidence";
 
-const SCENARIO_ID = "morrow-farmhouse-testwired-v1";
 const AUTHORIZED_AGENT_DIDZ =
   "didz:testtown:agent:morrow-property-assistant";
 const UNAUTHORIZED_AGENT_DIDZ = "didz:testtown:agent:unknown-listing-bot";
@@ -42,12 +57,6 @@ type ConnectionKind =
 interface ConnectionState {
   readonly kind: ConnectionKind;
   readonly message: string;
-}
-
-interface RunContext {
-  readonly runId: string;
-  readonly sessionId: string;
-  readonly receiptId?: string;
 }
 
 interface FlowStep {
@@ -240,29 +249,6 @@ function providersFromStatus(status: StatusResponse | null): ProviderDisplay[] {
   });
 }
 
-function responseHasRequiredEvidence(
-  stepIndex: number,
-  response: ApiResponseEnvelope<JudgeMutationResponse>,
-): RunContext | null {
-  if (response.data.ok !== true) {
-    return null;
-  }
-  if (stepIndex === 0) {
-    return typeof response.data.runId === "string" &&
-      typeof response.data.sessionId === "string"
-      ? { runId: response.data.runId, sessionId: response.data.sessionId }
-      : null;
-  }
-  return typeof response.data.receiptId === "string"
-    ? {
-        runId: typeof response.data.runId === "string" ? response.data.runId : "",
-        sessionId:
-          typeof response.data.sessionId === "string" ? response.data.sessionId : "",
-        receiptId: response.data.receiptId,
-      }
-    : null;
-}
-
 export default function App() {
   const [connection, setConnection] = useState<ConnectionState>({
     kind: "not-configured",
@@ -270,12 +256,37 @@ export default function App() {
   });
   const [statusResponse, setStatusResponse] = useState<StatusResponse | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [runContext, setRunContext] = useState<RunContext | null>(null);
+  const [runContext, setRunContext] =
+    useState<VerifiedRunContext | null>(null);
   const [lastEvidence, setLastEvidence] = useState<EvidenceSnapshot | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [operationPending, setOperationPending] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fetchingReceipt, setFetchingReceipt] = useState(false);
+  const [guideStarted, setGuideStarted] = useState(false);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const operationGateReference = useRef(new SynchronousOperationGate());
+  const receiptInFlightReference = useRef(false);
+  const idempotencyKeysByStepReference = useRef(new Map<number, string>());
+  const connectionAbortReference = useRef<AbortController | null>(null);
+  const connectionRequestGateReference = useRef(new LatestRequestGate());
+  const connectionStateReference = useRef(connection);
+  const statusResponseReference = useRef(statusResponse);
+  const runContextReference = useRef(runContext);
+  const narrator = useGuidedNarrator(guideStarted);
+
+  const updateConnection = useCallback((nextConnection: ConnectionState) => {
+    connectionStateReference.current = nextConnection;
+    setConnection(nextConnection);
+  }, []);
+  const updateStatusResponse = useCallback((nextStatus: StatusResponse | null) => {
+    statusResponseReference.current = nextStatus;
+    setStatusResponse(nextStatus);
+  }, []);
+  const updateRunContext = useCallback((nextContext: VerifiedRunContext | null) => {
+    runContextReference.current = nextContext;
+    setRunContext(nextContext);
+  }, []);
 
   const clientConfiguration = useMemo(() => {
     try {
@@ -290,145 +301,352 @@ export default function App() {
   }, []);
 
   const checkConnection = useCallback(async () => {
+    if (
+      operationGateReference.current.isActive() ||
+      receiptInFlightReference.current
+    ) {
+      return;
+    }
+    const requestGeneration = connectionRequestGateReference.current.begin();
+    connectionAbortReference.current?.abort();
+    const abortController = new AbortController();
+    connectionAbortReference.current = abortController;
+    const requestIsCurrent = () =>
+      !abortController.signal.aborted &&
+      connectionRequestGateReference.current.isCurrent(requestGeneration);
+
+    setOperationError(null);
+    updateStatusResponse(null);
     if (clientConfiguration.error) {
-      setConnection({ kind: "unreachable", message: clientConfiguration.error });
+      updateConnection({ kind: "unreachable", message: clientConfiguration.error });
       return;
     }
     if (!clientConfiguration.client) {
-      setConnection({
+      updateConnection({
         kind: "not-configured",
         message: "Set VITE_API_BASE_URL to the public API Gateway address.",
       });
       return;
     }
 
-    setConnection({ kind: "checking", message: "Calling the real API now…" });
+    updateConnection({ kind: "checking", message: "Calling the real API now…" });
     const [healthResult, statusResult, scenarioResult] = await Promise.allSettled([
-      clientConfiguration.client.health(),
-      clientConfiguration.client.status(),
-      clientConfiguration.client.scenarios(),
+      clientConfiguration.client.health({ signal: abortController.signal }),
+      clientConfiguration.client.status({ signal: abortController.signal }),
+      clientConfiguration.client.scenarios({ signal: abortController.signal }),
     ]);
 
+    if (!requestIsCurrent()) {
+      return;
+    }
     if (healthResult.status === "rejected") {
-      setConnection({
+      updateConnection({
         kind: "unreachable",
         message: publicErrorMessage(healthResult.reason),
       });
       return;
     }
 
-    if (statusResult.status === "fulfilled") {
-      setStatusResponse(statusResult.value.data);
-    }
-    const mutationReady =
-      statusResult.status === "fulfilled" &&
-      statusResult.value.data.ok === true &&
-      statusResult.value.data.readyForMutations === true;
-
-    setConnection({
-      kind: mutationReady ? "ready" : "reachable",
-      message: mutationReady
-        ? "The API explicitly reports that live operational routes are ready."
-        : "The API answered, but live providers are not connected. Judge actions remain disabled.",
+    const statusData =
+      statusResult.status === "fulfilled" ? statusResult.value.data : null;
+    const scenariosData =
+      scenarioResult.status === "fulfilled" ? scenarioResult.value.data : null;
+    updateStatusResponse(statusData);
+    const readiness = evaluateMutationReadiness({
+      health: healthResult.value.data,
+      status: statusData,
+      scenarios: scenariosData,
     });
 
-    if (scenarioResult.status === "rejected") {
+    updateConnection({
+      kind: readiness.ready ? "ready" : "reachable",
+      message: readiness.message,
+    });
+
+    const activeRun = runContextReference.current;
+    const refreshedReleaseCommit = statusData?.releaseCommit;
+    const activeRunMustReset = Boolean(
+      activeRun &&
+        (!readiness.ready ||
+          refreshedReleaseCommit !== activeRun.releaseCommit),
+    );
+    if (activeRunMustReset) {
+      setCurrentStep(0);
+      updateRunContext(null);
+      setLastEvidence(null);
+      idempotencyKeysByStepReference.current.clear();
       setOperationError(
-        "The API is reachable, but its scenario catalog was not available.",
+        readiness.ready
+          ? "The API is ready on a different release. The guided run was reset before another checkpoint could continue."
+          : "The connection refresh revoked mutation readiness. The guided run was reset before another checkpoint could continue.",
       );
+    } else if (
+      readiness.reason === "status-unavailable" ||
+      readiness.reason === "catalog-unavailable"
+    ) {
+      setOperationError(readiness.message);
     }
-  }, [clientConfiguration]);
+  }, [
+    clientConfiguration,
+    updateConnection,
+    updateRunContext,
+    updateStatusResponse,
+  ]);
 
   useEffect(() => {
     void checkConnection();
+    return () => {
+      connectionRequestGateReference.current.invalidate();
+      connectionAbortReference.current?.abort();
+    };
   }, [checkConnection]);
 
   const runStep = async () => {
     const client = clientConfiguration.client;
-    if (!client || connection.kind !== "ready" || currentStep >= 7) {
+    const readinessGenerationAtRequestStart =
+      connectionRequestGateReference.current.current();
+    const statusAtRequestStart = statusResponseReference.current;
+    const runContextAtRequestStart = runContextReference.current;
+    const requestReleaseCommit = statusAtRequestStart?.releaseCommit;
+    if (
+      receiptInFlightReference.current ||
+      !client ||
+      currentStep >= 7 ||
+      !operationCompletionRemainsReady({
+        requestGeneration: readinessGenerationAtRequestStart,
+        currentGeneration: connectionRequestGateReference.current.current(),
+        connectionReady: connectionStateReference.current.kind === "ready",
+        statusReadyForMutations:
+          statusAtRequestStart?.readyForMutations === true,
+        requestReleaseCommit,
+        currentReleaseCommit: statusAtRequestStart?.releaseCommit,
+        runReleaseCommit: runContextAtRequestStart?.releaseCommit,
+      }) ||
+      !operationGateReference.current.tryBegin()
+    ) {
       return;
     }
     setOperationPending(true);
     setOperationError(null);
+    setResetNotice(null);
+    const stepAtRequestStart = currentStep;
 
     try {
+      let idempotencyKey =
+        idempotencyKeysByStepReference.current.get(stepAtRequestStart);
+      if (!idempotencyKey) {
+        idempotencyKey = createPublicIdempotencyKey();
+        idempotencyKeysByStepReference.current.set(
+          stepAtRequestStart,
+          idempotencyKey,
+        );
+      }
       let response: ApiResponseEnvelope<JudgeMutationResponse>;
-      if (currentStep === 0) {
+      if (stepAtRequestStart === 0) {
         response = await client.startRun({
-          scenarioId: SCENARIO_ID,
+          scenarioId: REQUIRED_SYNTHETIC_SCENARIO_ID,
           agentDidz: AUTHORIZED_AGENT_DIDZ,
+          idempotencyKey,
         });
       } else {
-        if (!runContext) {
+        if (!runContextAtRequestStart) {
           throw new JudgeApiRequestError(
             "No verified run and session identifiers are available.",
           );
         }
-        if (currentStep === 1) {
-          response = await client.closeSession(runContext);
-        } else if (currentStep === 2) {
+        if (stepAtRequestStart === 1) {
+          response = await client.closeSession({
+            runId: runContextAtRequestStart.runId,
+            sessionId: runContextAtRequestStart.sessionId,
+            idempotencyKey,
+          });
+        } else if (stepAtRequestStart === 2) {
           response = await client.recall({
-            runId: runContext.runId,
+            runId: runContextAtRequestStart.runId,
             query: RECALL_QUERY,
             agentDidz: AUTHORIZED_AGENT_DIDZ,
+            idempotencyKey,
           });
         } else {
-          const action = FLOW_STEPS[currentStep].action;
+          const action = FLOW_STEPS[stepAtRequestStart].action;
           if (!action) {
             throw new JudgeApiRequestError("This step has no public write operation.");
           }
           response = await client.executeAction({
-            runId: runContext.runId,
+            runId: runContextAtRequestStart.runId,
             action,
             agentDidz:
-              currentStep === 4 ? UNAUTHORIZED_AGENT_DIDZ : AUTHORIZED_AGENT_DIDZ,
+              stepAtRequestStart === 4
+                ? UNAUTHORIZED_AGENT_DIDZ
+                : AUTHORIZED_AGENT_DIDZ,
+            idempotencyKey,
           });
         }
       }
 
-      const verifiedContext = responseHasRequiredEvidence(currentStep, response);
-      if (!verifiedContext) {
+      const currentStatus = statusResponseReference.current;
+      if (
+        !operationCompletionRemainsReady({
+          requestGeneration: readinessGenerationAtRequestStart,
+          currentGeneration: connectionRequestGateReference.current.current(),
+          connectionReady: connectionStateReference.current.kind === "ready",
+          statusReadyForMutations: currentStatus?.readyForMutations === true,
+          requestReleaseCommit,
+          currentReleaseCommit: currentStatus?.releaseCommit,
+          runReleaseCommit: runContextAtRequestStart?.releaseCommit,
+        })
+      ) {
         throw new JudgeApiRequestError(
-          "The API response did not contain the identifiers required to advance this proof.",
-          { httpStatus: response.httpStatus, requestId: response.requestId },
+          "Connection readiness or release changed while the operation was in flight. The late response was rejected.",
         );
       }
-      setRunContext((previousContext) => ({
-        runId: verifiedContext.runId || previousContext?.runId || "",
-        sessionId: verifiedContext.sessionId || previousContext?.sessionId || "",
-        receiptId: verifiedContext.receiptId ?? previousContext?.receiptId,
-      }));
+
+      const evidenceDecision = validateCheckpointResponseEvidence(
+        stepAtRequestStart,
+        response,
+        runContextAtRequestStart,
+        requestReleaseCommit,
+      );
+      if (!evidenceDecision.valid) {
+        throw new JudgeApiRequestError(evidenceDecision.message, {
+          httpStatus: response.httpStatus,
+          requestId: response.requestId,
+        });
+      }
+      updateRunContext(evidenceDecision.context);
       setLastEvidence({
-        operation: FLOW_STEPS[currentStep].title,
-        response: response as ApiResponseEnvelope<JsonObject>,
+        operation: FLOW_STEPS[stepAtRequestStart].title,
+        httpStatus: response.httpStatus,
+        receivedAt: response.receivedAt,
+        fields: buildValidatedMutationEvidenceFields(
+          stepAtRequestStart,
+          response,
+        ),
       });
       setCurrentStep((step) => step + 1);
       setDrawerOpen(true);
     } catch (error) {
       setOperationError(publicErrorMessage(error));
     } finally {
+      operationGateReference.current.end();
       setOperationPending(false);
     }
   };
 
   const fetchReceipt = async () => {
     const client = clientConfiguration.client;
-    if (!client || !runContext?.receiptId) {
+    const runContextAtRequestStart = runContextReference.current;
+    const statusAtRequestStart = statusResponseReference.current;
+    const readinessGenerationAtRequestStart =
+      connectionRequestGateReference.current.current();
+    const requestReleaseCommit = statusAtRequestStart?.releaseCommit;
+    const receiptId = runContextAtRequestStart?.receiptId;
+    if (
+      receiptInFlightReference.current ||
+      operationGateReference.current.isActive() ||
+      !client ||
+      !runContextAtRequestStart ||
+      !receiptId
+    ) {
       return;
     }
+
+    const expectedReceipt = runContextAtRequestStart.checkpointReceipts.find(
+      (checkpointReceipt) => checkpointReceipt.receiptId === receiptId,
+    );
+    if (
+      !expectedReceipt ||
+      !operationCompletionRemainsReady({
+        requestGeneration: readinessGenerationAtRequestStart,
+        currentGeneration: connectionRequestGateReference.current.current(),
+        connectionReady: connectionStateReference.current.kind === "ready",
+        statusReadyForMutations:
+          statusAtRequestStart?.readyForMutations === true,
+        requestReleaseCommit,
+        currentReleaseCommit: statusAtRequestStart?.releaseCommit,
+        runReleaseCommit: runContextAtRequestStart.releaseCommit,
+      })
+    ) {
+      setOperationError(
+        "Receipt retrieval requires the current live status and an exact accepted checkpoint receipt.",
+      );
+      return;
+    }
+
+    receiptInFlightReference.current = true;
     setFetchingReceipt(true);
     setOperationError(null);
     try {
-      const response = await client.receipt(runContext.receiptId);
+      const response = await client.receipt(receiptId);
+      const currentStatus = statusResponseReference.current;
+      if (
+        !operationCompletionRemainsReady({
+          requestGeneration: readinessGenerationAtRequestStart,
+          currentGeneration: connectionRequestGateReference.current.current(),
+          connectionReady: connectionStateReference.current.kind === "ready",
+          statusReadyForMutations: currentStatus?.readyForMutations === true,
+          requestReleaseCommit,
+          currentReleaseCommit: currentStatus?.releaseCommit,
+          runReleaseCommit: runContextAtRequestStart.releaseCommit,
+        })
+      ) {
+        throw new JudgeApiRequestError(
+          "Connection readiness or release changed while the receipt was in flight. The late receipt was rejected.",
+        );
+      }
+      const receiptDecision = validateReceiptResponseEvidence(response, {
+        checkpointReceipt: expectedReceipt,
+        liveReleaseCommit: requestReleaseCommit,
+      });
+      if (!receiptDecision.valid) {
+        throw new JudgeApiRequestError(receiptDecision.message, {
+          httpStatus: response.httpStatus,
+          requestId: response.requestId,
+        });
+      }
       setLastEvidence({
         operation: "Retrieved operation receipt",
-        response: response as ApiResponseEnvelope<JsonObject>,
+        httpStatus: response.httpStatus,
+        receivedAt: response.receivedAt,
+        fields: receiptDecision.fields,
       });
     } catch (error) {
       setOperationError(publicErrorMessage(error));
     } finally {
+      receiptInFlightReference.current = false;
       setFetchingReceipt(false);
     }
+  };
+
+  const startGuidedDemo = () => {
+    setGuideStarted(true);
+    setResetNotice(null);
+    narrator.start();
+    globalThis.requestAnimationFrame(() => {
+      document.getElementById("judge-flow")?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+    });
+  };
+
+  const resetBrowserView = () => {
+    if (operationGateReference.current.isActive() || receiptInFlightReference.current) {
+      return;
+    }
+    setCurrentStep(0);
+    updateRunContext(null);
+    setLastEvidence(null);
+    setOperationError(null);
+    setDrawerOpen(false);
+    setGuideStarted(false);
+    idempotencyKeysByStepReference.current.clear();
+    narrator.disable();
+    setResetNotice(
+      "This browser view was reset. No server record or durable memory was deleted.",
+    );
   };
 
   const currentConnectionLabel =
@@ -440,7 +658,10 @@ export default function App() {
   const activeFlowStep = FLOW_STEPS[currentStep] ?? FLOW_STEPS[7];
 
   return (
-    <>
+    <div
+      className={`app-shell${guideStarted ? " app-shell--guided" : ""}`}
+      {...narrator.surfaceProps}
+    >
       <a className="skip-link" href="#judge-flow">
         Skip to the guided proof
       </a>
@@ -456,7 +677,12 @@ export default function App() {
       </header>
 
       <main id="top">
-        <section className="hero" aria-labelledby="hero-title">
+        <section
+          className="hero"
+          aria-labelledby="hero-title"
+          data-narration-key="overview"
+          tabIndex={0}
+        >
           <div className="hero__copy">
             <p className="eyebrow">CockroachDB × AWS · Privacy memory proof</p>
             <h1 id="hero-title">
@@ -474,7 +700,12 @@ export default function App() {
             </div>
           </div>
 
-          <article className="case-card" aria-labelledby="case-title">
+          <article
+            className="case-card"
+            aria-labelledby="case-title"
+            data-narration-key="case"
+            tabIndex={0}
+          >
             <div className="case-card__signal" aria-hidden="true">
               <span />
               <span />
@@ -484,15 +715,15 @@ export default function App() {
             <h2 id="case-title">Morrow family farmhouse</h2>
             <p>44 Quarry Road · fictional TestTown property</p>
             <dl>
-              <div>
+              <div data-narration-key="case" tabIndex={0}>
                 <dt>Parcel</dt>
                 <dd>TT-PARCEL-0917-114</dd>
               </div>
-              <div>
+              <div data-narration-key="case" tabIndex={0}>
                 <dt>Permitted predicate</dt>
                 <dd>property.is_unencumbered</dd>
               </div>
-              <div>
+              <div data-narration-key="case" tabIndex={0}>
                 <dt>Source documents in model context</dt>
                 <dd>None</dd>
               </div>
@@ -500,7 +731,18 @@ export default function App() {
           </article>
         </section>
 
-        <section className={`connection-banner connection-banner--${connection.kind}`} aria-live="polite">
+        <NarrationControls
+          guideStarted={guideStarted}
+          onStart={startGuidedDemo}
+          narrator={narrator}
+        />
+
+        <section
+          className={`connection-banner connection-banner--${connection.kind}`}
+          aria-live="polite"
+          data-narration-key="connection"
+          tabIndex={0}
+        >
           <div>
             <StatusBadge label={currentConnectionLabel} compact />
             <p>{connection.message}</p>
@@ -509,20 +751,32 @@ export default function App() {
             className="button button--secondary"
             type="button"
             onClick={() => void checkConnection()}
-            disabled={connection.kind === "checking"}
+            disabled={
+              connection.kind === "checking" ||
+              operationPending ||
+              fetchingReceipt
+            }
           >
             {connection.kind === "checking" ? "Checking real API…" : "Check connection"}
           </button>
         </section>
 
-        <section className="flow-shell" id="judge-flow" aria-labelledby="flow-title">
-          <div className="flow-intro">
+        <section
+          className="flow-shell"
+          id="judge-flow"
+          aria-labelledby="flow-title"
+        >
+          <div
+            className="flow-intro"
+            data-narration-key="checkpoint"
+            tabIndex={0}
+          >
             <p className="eyebrow">One proof, eight checkpoints</p>
             <h2 id="flow-title">Follow the evidence, not a canned animation</h2>
             <p>
               A checkpoint advances only after the public API returns the identifiers
-              required by that operation. Phase 1 has no live providers, so this flow
-              correctly remains locked.
+              required by that operation. Until the API reports operational readiness,
+              this flow correctly remains locked.
             </p>
           </div>
 
@@ -546,7 +800,11 @@ export default function App() {
               ))}
             </ol>
 
-            <article className="active-step">
+            <article
+              className="active-step"
+              data-narration-key="checkpoint"
+              tabIndex={0}
+            >
               <p className="active-step__number">
                 Checkpoint {Math.min(currentStep + 1, 8)} of 8
               </p>
@@ -571,17 +829,31 @@ export default function App() {
                   disabled={
                     connection.kind !== "ready" ||
                     operationPending ||
+                    fetchingReceipt ||
                     currentStep >= 7
                   }
                 >
-                  {operationPending ? "Waiting for real API…" : activeFlowStep.label}
+                  {operationPending
+                    ? "Waiting for real API…"
+                    : fetchingReceipt
+                      ? "Retrieving receipt…"
+                      : activeFlowStep.label}
                 </button>
                 <button
                   className="button button--ghost"
                   type="button"
                   onClick={() => setDrawerOpen(true)}
+                  data-narration-key="evidence"
                 >
                   Open evidence drawer
+                </button>
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  disabled={operationPending || fetchingReceipt}
+                  onClick={resetBrowserView}
+                >
+                  Reset this browser view
                 </button>
               </div>
               {connection.kind !== "ready" ? (
@@ -590,11 +862,18 @@ export default function App() {
                   operational readiness.
                 </p>
               ) : null}
+              {resetNotice ? (
+                <p className="reset-notice" role="status">
+                  {resetNotice}
+                </p>
+              ) : null}
             </article>
           </div>
         </section>
 
-        <ProviderMatrix providers={providersFromStatus(statusResponse)} />
+        <div data-narration-key="providers" tabIndex={0}>
+          <ProviderMatrix providers={providersFromStatus(statusResponse)} />
+        </div>
       </main>
 
       <footer className="site-footer">
@@ -606,9 +885,17 @@ export default function App() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         evidence={lastEvidence}
-        onFetchReceipt={runContext?.receiptId ? fetchReceipt : null}
+        onFetchReceipt={
+          runContext?.receiptId &&
+          connection.kind === "ready" &&
+          statusResponse?.readyForMutations === true &&
+          statusResponse.releaseCommit === runContext.releaseCommit &&
+          !operationPending
+            ? fetchReceipt
+            : null
+        }
         fetchingReceipt={fetchingReceipt}
       />
-    </>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-08-13
+Last updated: 2026-08-14
 
 This file is the public truth ledger for MidnightHelixCTW. Update it whenever a
 provider, test, deployment, or evidence claim changes.
@@ -43,11 +43,70 @@ successful output carrying a sanitized real test-service receipt.
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
 | Reconstructible derived index | PLANNED | Shadow generation rebuilt from canonical test records, commitment verified, pointer flipped atomically, same answer returned. |
-| Public judge UI | SOURCE_ONLY | Phase 1 judge-interface source exists. Promotion still requires a public URL, desktop/mobile end-to-end test, and clean console/network results. |
+| Public judge UI | SOURCE_ONLY | The independent guided interface, allowlisted browser narration, fail-closed controls, request-race guards, and local test source exist. Promotion still requires a public URL, signed-out desktop/mobile end-to-end tests, and clean console/network results at the release commit. |
 
 `MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
 reports all three provider connections as `NOT_CONNECTED` and does not call a
 provider implementation.
+
+The browser guide and narration are presentation features, not provider
+evidence. A working voice or local UI build cannot promote a cloud, database,
+proof, identity, or deployment status.
+
+### 2026-08-14 first AWS create attempt
+
+The first create of `mhelixctw-testwired` rolled back before API Gateway
+produced a public endpoint. The transformed OpenAPI lacked `servers[0].url`
+and did not provide the root CORS value as the object required by API Gateway.
+This was a first-create failure, not an update rollback of a previously
+known-good application stack.
+
+Post-rollback inspection verified that the application Lambda, API, IAM role,
+and application log resources were removed. The `ROLLBACK_COMPLETE` stack
+record remains. The AWS SAM managed packaging stack and bucket also remain as
+tool-managed packaging infrastructure; neither is evidence that the application
+deployed.
+
+A source fix is staged locally, and a built-template contract now checks the
+transformed server URL and CORS object. No redeployment has succeeded. AWS
+Lambda and API Gateway therefore remain `SOURCE_ONLY` until a generated public
+URL and runtime evidence pass the promotion checklist.
+### 2026-08-14 guided UI and response-evidence hardening
+
+The judge-interface source now includes an explicit guided-demo start, a sticky
+checkpoint guide, allowlisted browser narration with honest local or
+browser-reported remote voice labels, keyboard-focus parity, reduced-motion
+behavior, and a browser-only reset that makes no server-deletion claim.
+
+Request safety now includes stable per-checkpoint idempotency keys, synchronous
+double-activation protection, abort and generation guards for connection
+refreshes, mutation and receipt mutual exclusion, and separate malformed-JSON
+and network errors. Readiness requires health, operational status, the exact
+synthetic Morrow scenario catalog entry, and a matching strict release commit.
+Every mutation remains bound to that release and the readiness generation that
+authorized it.
+
+The browser also validates an ordered, typed evidence chain. A generic receipt
+cannot stand in for a closed Session A, a recall bound to canonical memory, a
+verified Midnight predicate, an explicit disclosure denial, a commitment-checked
+projection rebuild, or post-rebuild continuity. Managed MCP remains an
+unavailable eighth checkpoint until its separate read-only contract exists.
+
+Fetched receipts additionally bind their AWS provider request to the exact raw
+request ID of the originating mutation. Predicate receipts bind a distinct
+Midnight provider receipt. Identifier reuse, mock-provider promotion, release
+drift, readiness-revocation races, unknown keys, and unbound provider claims fail
+closed. The evidence drawer reads only prevalidated canonical fields.
+
+Local source, type, build, and deterministic browser-fixture checks provide
+development evidence only. They did not connect or promote CockroachDB, Bedrock,
+Midnight, Managed MCP, the mock fixture providers, AWS transport, or the public
+UI. No public endpoint was created, and the canonical full mutation journey
+remains unavailable against the real provider boundary. Detailed checkpoint
+evidence and limitations are recorded in
+[WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md).
+
+
 ### Phase 1 fail-closed boundary
 
 Until the named live providers are connected, valid operational POST requests

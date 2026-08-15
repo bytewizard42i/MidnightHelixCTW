@@ -4,6 +4,15 @@ This runbook describes the intended public test environment. It does not claim t
 stack is deployed until [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) records
 current live evidence.
 
+> **Current AWS state, 2026-08-14:** The first create of
+> `mhelixctw-testwired` failed during API Gateway import and reached
+> `ROLLBACK_COMPLETE`. No application endpoint was created. Post-rollback
+> inspection found no application API, Lambda, IAM role, or application log
+> groups. The AWS SAM managed packaging stack and bucket remain and are not
+> application deployment evidence. A local source fix adds `servers[0].url`,
+> object-shaped root CORS, and a built-template contract. That fix has not been
+> redeployed successfully.
+
 ## Target public surfaces
 
 1. AWS automatically supplies the first API URL after API Gateway deployment:
@@ -136,7 +145,8 @@ fallback:
 ## Step 5, connect the UI
 
 Configure the public UI with the generated API URL first. Do not display a connected
-badge until `/health` and the guided flow pass from a signed-out browser.
+badge until `/healthz`, `/api/v1/status`, the exact synthetic scenario catalog,
+and the guided flow pass from a signed-out browser.
 
 Once stable, add the custom API domain and update exact CORS. Keep the generated
 AWS URL in the operator runbook as a recovery path.
@@ -157,7 +167,10 @@ Run the judge flow three times with new namespaces and verify:
 
 ## Rollback
 
-A failed deployment keeps the previous known-good stack and projection active. A
-rebuild writes a new generation and flips the pointer only after validation. The
-public demo never drops tables, truncates shared data, or deletes canonical
-artifacts.
+On a first create, failure can leave only a `ROLLBACK_COMPLETE` stack record and
+no endpoint. On an update to a known-good stack, verify what CloudFormation
+preserved rather than assuming the previous application remains active.
+
+Projection rollback is a separate application operation. A rebuild writes a new
+generation and flips the pointer only after validation. The public demo never
+drops tables, truncates shared data, or deletes canonical artifacts.

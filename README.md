@@ -1,11 +1,12 @@
 # MidnightHelixCTW (MHelixCTW)
 
-> **HelixCTW is a reconstructible private memory layer for Ai agents, using
-> CockroachDB Cloud as durable memory on AWS and Midnight test infrastructure
-> as the privacy trust plane.**
+> **Target architecture:** HelixCTW is designed to become a reconstructible
+> private memory layer for Ai agents, using CockroachDB Cloud as durable memory
+> on AWS and Midnight test infrastructure as the privacy trust plane.
 
 **Stage:** TestWired assembly
-**Environment:** Public test environment, synthetic data only
+**Environment target:** Public TestWired environment, synthetic data only
+**Current environment:** Local source-only assembly, no verified public endpoint
 **Hackathon:** CockroachDB x AWS, Build with Agentic Memory
 **License:** Apache-2.0
 **Start here:** [Canonical judge and developer repository index](docs/INDEX.md)
@@ -15,18 +16,28 @@ attributed HelixCTW data-adapter baseline from the entrant-owned DIDzMonolith
 and builds a complete public application around it. The original repositories
 and their Git histories remain untouched.
 
+> **Current verified state, 2026-08-14:** The guided UI and AWS deployment
+> source exist locally. The first AWS application-stack create rolled back
+> before an API endpoint was produced. No public UI or API URL is verified.
+> CockroachDB, Bedrock, Midnight, and Managed MCP remain disconnected. DIDz,
+> AgenticDID, and RWAz have synthetic fixtures, but their callable providers
+> also remain disconnected. Operational controls fail closed. See the
+> [implementation status](docs/IMPLEMENTATION_STATUS.md) for the evidence needed
+> to promote each capability.
+
 ## The question the judge asks
 
 > **Is this property unencumbered?**
 
-The agent must answer without receiving the deed, mortgage record, owner
-details, or decryption key. CockroachDB remembers where the authorized evidence
-is, which prior session established it, and what was already verified.
-Midnight verifies the privacy-preserving commitment or predicate on test
-infrastructure. The agent receives only the permitted result and a receipt.
+In the completed target flow, the agent must answer without receiving the deed,
+mortgage record, owner details, or decryption key. CockroachDB will remember
+where the authorized evidence is, which prior session established it, and what
+was already verified. Midnight will verify the privacy-preserving commitment or
+predicate on supported test infrastructure. The agent will receive only the
+permitted result and a receipt.
 
-The second proof is reconstruction. A disposable CockroachDB recall projection
-is replaced and rebuilt from canonical synthetic evidence. The same question
+The target second proof is reconstruction. A disposable CockroachDB recall
+projection is replaced and rebuilt from canonical synthetic evidence. The same question
 must return the same memory identifier and verified commitment after the
 rebuild.
 
@@ -49,7 +60,11 @@ No component may silently fall back to a mock.
 infrastructure. `TestWired` is the build stage. See
 [`docs/BUILD_STAGES.md`](docs/BUILD_STAGES.md).
 
-## The guided judge flow
+## The target guided judge flow
+
+The local source presents this sequence but keeps operational checkpoints
+locked while providers are disconnected. The sequence becomes a live judge flow
+only after every required capability is promoted with current evidence.
 
 1. Load the fictional Morrow farmhouse case.
 2. Session A records the private evidence commitments and authorized predicate.
@@ -59,13 +74,21 @@ infrastructure. `TestWired` is the build stage. See
 6. Show the Midnight test receipt for the permitted one-bit result.
 7. Ask for the deed and owner details. The request is denied without disclosure.
 8. Rebuild the disposable hot-memory projection.
-9. Ask the original question again and show the same commitment and receipt
-   lineage.
-10. Use read-only CockroachDB Managed MCP to inspect the memory and rebuild
-    receipt.
+9. Ask the original question again and show the same canonical memory and
+   evidence commitment, the rebuilt projection generation, and new accepted
+   action and Midnight receipts in the same lineage.
+10. After its separate read-only response contract is implemented and verified,
+    use CockroachDB Managed MCP to inspect the memory and rebuild receipt. This
+    checkpoint is currently unavailable.
 
 The complete script and required evidence are in
 [`docs/JUDGE_SCENARIO.md`](docs/JUDGE_SCENARIO.md).
+
+The judge UI adds an explicit guided-demo start, sticky checkpoint controls,
+allowlisted browser narration with honest voice fallback, keyboard-focus parity,
+reduced-motion support, and a browser-only reset. These presentation features do
+not unlock providers or create evidence. See
+[`docs/UI_AND_BROWSER_NARRATION.md`](docs/UI_AND_BROWSER_NARRATION.md).
 
 ## Repository map
 

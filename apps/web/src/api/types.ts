@@ -1,3 +1,12 @@
+import type {
+  CloseSessionResponse as CanonicalCloseSessionResponse,
+  CreateRunResponse as CanonicalCreateRunResponse,
+  JudgeAction as CanonicalJudgeAction,
+  JudgeActionResponse as CanonicalJudgeActionResponse,
+  RecallResponse as CanonicalRecallResponse,
+  ReceiptResponse as CanonicalReceiptResponse,
+} from "../../../../packages/protocol-types/src/testwired-contracts";
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export interface JsonObject {
@@ -13,9 +22,12 @@ export type EvidenceLabel =
   | "PLANNED"
   | "NOT AVAILABLE";
 
-export interface ApiResponseEnvelope<ResponseBody extends JsonObject> {
+export interface ApiResponseEnvelope<ResponseBody> {
   readonly data: ResponseBody;
   readonly httpStatus: number;
+  /** Raw X-Request-Id response header, never synthesized from the JSON body. */
+  readonly headerRequestId?: string;
+  /** Display/error request ID, with a JSON-body fallback for failed responses. */
   readonly requestId?: string;
   readonly receivedAt: string;
 }
@@ -24,6 +36,7 @@ export interface HealthResponse extends JsonObject {
   readonly ok?: boolean;
   readonly service?: string;
   readonly deploymentStatus?: string;
+  readonly releaseCommit?: string;
 }
 
 export interface ProviderStatus extends JsonObject {
@@ -52,41 +65,51 @@ export interface ScenariosResponse extends JsonObject {
   readonly scenarios?: ScenarioCatalogEntry[];
 }
 
-export type JudgeActionId =
-  | "verify_unencumbered"
-  | "attempt_protected_disclosure"
-  | "rebuild_recall_projection";
-
-export interface JudgeMutationResponse extends JsonObject {
-  readonly ok?: boolean;
-  readonly runId?: string;
-  readonly sessionId?: string;
-  readonly receiptId?: string;
-}
+export type JudgeActionId = CanonicalJudgeAction;
+export type CreateRunResponse = CanonicalCreateRunResponse;
+export type CloseSessionResponse = CanonicalCloseSessionResponse;
+export type RecallResponse = CanonicalRecallResponse;
+export type JudgeActionResponse = CanonicalJudgeActionResponse;
+export type ReceiptResponse = CanonicalReceiptResponse;
+export type JudgeMutationResponse =
+  | CreateRunResponse
+  | CloseSessionResponse
+  | RecallResponse
+  | JudgeActionResponse;
 
 export interface JudgeApiClient {
-  health(): Promise<ApiResponseEnvelope<HealthResponse>>;
-  status(): Promise<ApiResponseEnvelope<StatusResponse>>;
-  scenarios(): Promise<ApiResponseEnvelope<ScenariosResponse>>;
+  health(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<ApiResponseEnvelope<HealthResponse>>;
+  status(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<ApiResponseEnvelope<StatusResponse>>;
+  scenarios(options?: {
+    readonly signal?: AbortSignal;
+  }): Promise<ApiResponseEnvelope<ScenariosResponse>>;
   startRun(input: {
     readonly scenarioId: string;
     readonly agentDidz?: string;
-  }): Promise<ApiResponseEnvelope<JudgeMutationResponse>>;
+    readonly idempotencyKey?: string;
+  }): Promise<ApiResponseEnvelope<CreateRunResponse>>;
   closeSession(input: {
     readonly runId: string;
     readonly sessionId: string;
-  }): Promise<ApiResponseEnvelope<JudgeMutationResponse>>;
+    readonly idempotencyKey?: string;
+  }): Promise<ApiResponseEnvelope<CloseSessionResponse>>;
   recall(input: {
     readonly runId: string;
     readonly query: string;
     readonly agentDidz?: string;
-  }): Promise<ApiResponseEnvelope<JudgeMutationResponse>>;
+    readonly idempotencyKey?: string;
+  }): Promise<ApiResponseEnvelope<RecallResponse>>;
   executeAction(input: {
     readonly runId: string;
     readonly action: JudgeActionId;
     readonly agentDidz?: string;
-  }): Promise<ApiResponseEnvelope<JudgeMutationResponse>>;
+    readonly idempotencyKey?: string;
+  }): Promise<ApiResponseEnvelope<JudgeActionResponse>>;
   receipt(
     receiptId: string,
-  ): Promise<ApiResponseEnvelope<JudgeMutationResponse>>;
+  ): Promise<ApiResponseEnvelope<ReceiptResponse>>;
 }

@@ -26,7 +26,12 @@ export function ProviderMatrix({ providers }: ProviderMatrixProps) {
 
       <div className="provider-grid">
         {providers.map((provider) => (
-          <article className="provider-card" key={provider.id}>
+          <article
+            className="provider-card"
+            key={provider.id}
+            data-narration-key="providers"
+            tabIndex={0}
+          >
             <div className="provider-card__topline">
               <h3>{provider.name}</h3>
               <StatusBadge label={provider.evidence} compact />

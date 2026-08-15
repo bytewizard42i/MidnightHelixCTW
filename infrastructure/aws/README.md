@@ -23,7 +23,10 @@ transport row `REALDEAL_TEST` and `CONNECTED`. Global deployment evidence remain
 `SOURCE_ONLY`; CockroachDB, Bedrock, Midnight, Managed MCP, and the fixture
 providers remain disconnected, and mutations remain blocked.
 
-No stack has been deployed from this repository yet.
+No application stack has deployed successfully from this repository. The first
+create on 2026-08-14 rolled back before producing an endpoint. The staged source
+fix has not been redeployed. See the dated incident in
+[`docs/IMPLEMENTATION_STATUS.md`](../../docs/IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt).
 
 ## Local validation
 
@@ -35,8 +38,12 @@ bash infrastructure/aws/scripts/validate-local.sh
 ```
 
 This runs the handler tests, infrastructure contract tests, SAM lint, SAM build,
-and a package scan for environment files, source maps, logs, and common
-credential-bearing patterns.
+a post-build OpenAPI contract check, and a package scan for environment files,
+source maps, logs, and common credential-bearing patterns.
+The inline OpenAPI document declares a relative root in `servers[0].url` and an
+object-shaped `x-amazon-apigateway-cors` extension so SAM can add endpoint
+configuration without producing an invalid Server Object or replacing CORS with
+a bare origin list.
 
 ## Deliberate deployment
 

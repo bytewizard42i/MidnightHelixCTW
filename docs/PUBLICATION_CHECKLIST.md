@@ -1,5 +1,22 @@
 # Publication checklist
 
+Every checkbox below is a final release-commit gate. Preliminary local evidence
+does not complete a final checkbox. Repeat the applicable check after the release
+commit and public URLs exist.
+
+## Pre-release evidence snapshot, 2026-08-14
+
+| Evidence | Preliminary state | Release implication |
+| --- | --- | --- |
+| Root license, provenance, pinned synthetic fixture, and repository documentation | Recorded at the previously checked source revision | Repeat against the release commit and public clone. |
+| Guided UI, narration allowlist, keyboard and reduced-motion source, request guards, and typed evidence validation | Local source and tests exist | Repeat built-preview desktop, mobile, accessibility, console, and network checks at the release commit. |
+| AWS Serverless Application Model source and built-template OpenAPI contract | Local validation evidence exists | Does not prove deployment. The first create rolled back and no endpoint exists. |
+| Public UI, generated AWS API, CloudWatch runtime evidence | Not available | Final judge-flow and public-link gates remain open. |
+| CockroachDB, Bedrock, Midnight, reconstruction, Managed MCP | Not connected | Their live, video, and sponsor-tool gates remain open. |
+
+See [WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md) for the dated evidence and
+known limitations.
+
 ## Source and ownership
 
 - [ ] Apache-2.0 appears at repository root and GitHub detects it.
@@ -20,6 +37,9 @@
   placeholders only.
 - [ ] All test data is synthetic.
 - [ ] Browser bundle contains no database, Managed MCP, wallet, or secret values.
+- [ ] Browser narration speaks only reviewed allowlisted copy, requests no
+  microphone, and never reads API payloads, receipts, identifiers, or protected
+  data.
 - [ ] Live roles are least privilege and environment-marker verification passes.
 - [ ] API inputs, outputs, provider calls, and retries are bounded.
 - [ ] Logs are redacted and have limited retention.
@@ -38,6 +58,13 @@
 ## Judge flow
 
 - [ ] Public UI and generated AWS API URL work in an incognito browser.
+- [ ] The 1440 by 900 desktop and 390 by 844 mobile layouts pass the signed-out
+  guided flow with no unexpected console or network errors.
+- [ ] Guided-demo start, voice fallback or unavailable state, replay, stop,
+  keyboard-focus parity, evidence drawer, and reduced-motion behavior are
+  verified in the release browser.
+- [ ] Reset is visibly limited to the browser view and makes no server-deletion
+  claim.
 - [ ] Session B recalls Session A from CockroachDB after browser refresh.
 - [ ] Real Titan vector retrieval is visible.
 - [ ] Exact scope and private predicate are separately shown.

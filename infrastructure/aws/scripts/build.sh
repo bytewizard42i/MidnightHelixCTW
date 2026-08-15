@@ -19,6 +19,9 @@ sam build \
   --template-file "${STACK_DIRECTORY}/template.yaml" \
   --build-dir "${BUILD_DIRECTORY}"
 
+MHELIX_BUILT_TEMPLATE_FILE="${BUILD_DIRECTORY}/template.yaml" \
+  node --test "${STACK_DIRECTORY}/test/template-contract.test.mjs"
+
 forbidden_file="$(
   find "${BUILD_DIRECTORY}" -type f \
     \( -name '.env' -o -name '.env.*' -o -name '*.map' -o -name '*.log' \) \

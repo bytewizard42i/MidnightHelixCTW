@@ -1,8 +1,9 @@
 # CockroachDB memory design
 
-CockroachDB is the center of the submitted application. Midnight adds private
-proof and commitment verification, but CockroachDB is what lets a fresh agent
-remember, coordinate, refuse stale work, and resume safely.
+CockroachDB is the intended center of the completed submission. Midnight will
+add private proof and commitment verification, while CockroachDB will let a
+fresh agent remember, coordinate, refuse stale work, and resume safely. These
+provider paths are not connected in the current source-only phase.
 
 ## Canonical records
 
@@ -19,8 +20,12 @@ The target schema separates authoritative state from derived recall data:
 | `projection_generations` | Rebuild manifest, state, counts, roots, and active pointer. | Yes |
 | `action_receipts` | Idempotency, disclosure, denial, and result commitments. | Yes |
 
-Every record is namespaced by environment and synthetic judge run. A reset creates
-a new namespace from an immutable seed. It never drops or truncates shared tables.
+Every target record is namespaced by environment and synthetic judge run. A
+future server-side run or test-harness reset may create a new namespace from an
+immutable seed; it must never drop or truncate shared tables. The visible
+**Reset this browser view** control creates no namespace, calls no reset or
+delete route, and deletes no server record, durable memory, receipt, or
+canonical artifact.
 
 ## Recall algorithm
 
