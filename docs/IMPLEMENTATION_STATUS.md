@@ -39,11 +39,11 @@ successful output carrying a sanitized real test-service receipt.
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
 | CockroachDB Managed MCP | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
-| AWS Lambda and API Gateway | SOURCE_ONLY | Phase 1 handler, eight-route contract, tests, and deployment source exist. Promotion still requires a public generated URL, CloudWatch request ID, and incognito smoke test. |
+| AWS (Amazon Web Services) Lambda and Amazon API (Application Programming Interface) Gateway | LIVE TESTWIRED | The `mhelixctw-testwired` stack is `CREATE_COMPLETE` at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`; its generated address is `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. Read-only routes, exact-origin CORS (Cross-Origin Resource Sharing), and the fail-closed mutation check passed. This promotion applies only to cloud transport; downstream providers remain `NOT_CONNECTED`. |
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
 | Reconstructible derived index | PLANNED | Shadow generation rebuilt from canonical test records, commitment verified, pointer flipped atomically, same answer returned. |
-| Public judge UI | SOURCE_ONLY | The independent guided interface, allowlisted browser narration, fail-closed controls, request-race guards, and local test source exist. Promotion still requires a public URL, signed-out desktop/mobile end-to-end tests, and clean console/network results at the release commit. |
+| Public judge UI (User Interface) | LIVE TESTWIRED | Amplify application `d23ghemtd40rom` serves branch `main` at `https://main.d23ghemtd40rom.amplifyapp.com` and `https://testwired.helixctw.com`. The custom address is `AVAILABLE`, returns HTTP (Hypertext Transfer Protocol) status 200, and presents valid TLS (Transport Layer Security) 1.3. Hosting and read-only connection are promoted; the complete mutation journey remains unavailable while `readyForMutations` is false. |
 
 `MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
 reports all three provider connections as `NOT_CONNECTED` and does not call a
@@ -52,6 +52,30 @@ provider implementation.
 The browser guide and narration are presentation features, not provider
 evidence. A working voice or local UI build cannot promote a cloud, database,
 proof, identity, or deployment status.
+
+### 2026-08-15 cloud transport and public frontend checkpoint
+
+The `mhelixctw-testwired` AWS (Amazon Web Services) SAM (Serverless
+Application Model) application stack is `CREATE_COMPLETE` at release
+`578d565049e6d177c4b6fae4bb69fe4a2337173f`. Its generated
+API (Application Programming Interface) address is
+`https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. Read-only checks and
+exact-origin CORS (Cross-Origin Resource Sharing) passed for both the generated
+and custom frontend origins.
+
+Amplify application `d23ghemtd40rom` serves branch `main` at
+`https://main.d23ghemtd40rom.amplifyapp.com` and
+`https://testwired.helixctw.com`. The custom address is `AVAILABLE`, returns
+HTTP (Hypertext Transfer Protocol) status 200, and presents valid
+TLS (Transport Layer Security) 1.3 without changing the effective address or
+redirecting the request.
+
+This evidence promotes only public hosting, read-only connection, and cloud
+transport. Downstream providers remain `NOT_CONNECTED`,
+`readyForMutations` remains false, and a valid mutation smoke check returns
+HTTP (Hypertext Transfer Protocol) status
+`503 LIVE_PROVIDERS_NOT_CONNECTED`. The global `deploymentEvidence` value
+therefore remains `SOURCE_ONLY`.
 
 ### 2026-08-14 first AWS create attempt
 
@@ -72,9 +96,11 @@ that the application deployed. The ordered sanitized record is preserved in the
 
 Corrective source was published to `main` in commit
 `069826cd7226c99ef3f4d8f454160db0581d5aed`, and a built-template contract now
-checks the transformed server URL and CORS object. No redeployment has
-succeeded. AWS Lambda and API Gateway therefore remain `SOURCE_ONLY` until a
-generated public URL and runtime evidence pass the promotion checklist.
+checks the transformed server address and CORS (Cross-Origin Resource Sharing)
+object. That corrective source was superseded by the successful deployment at
+release `578d565049e6d177c4b6fae4bb69fe4a2337173f` on 2026-08-15. The original
+rollback record remains historical evidence; the current state is recorded in
+the 2026-08-15 checkpoint above.
 
 ### 2026-08-14 guided UI and response-evidence hardening
 
@@ -103,21 +129,26 @@ Midnight provider receipt. Identifier reuse, mock-provider promotion, release
 drift, readiness-revocation races, unknown keys, and unbound provider claims fail
 closed. The evidence drawer reads only prevalidated canonical fields.
 
-Local source, type, build, and deterministic browser-fixture checks provide
-development evidence only. They did not connect or promote CockroachDB, Bedrock,
-Midnight, Managed MCP, the mock fixture providers, AWS transport, or the public
-UI. No public endpoint was created, and the canonical full mutation journey
-remains unavailable against the real provider boundary. Detailed checkpoint
-evidence and limitations are recorded in
+At that 2026-08-14 checkpoint, local source, type, build, and deterministic
+browser-fixture checks provided development evidence only. They did not connect
+or promote CockroachDB, Bedrock, Midnight, Managed MCP (Managed Model Context
+Protocol), the mock fixture providers, AWS (Amazon Web Services) transport, or
+the public UI (User Interface). At that checkpoint, no public endpoint had been
+created, and the canonical full mutation journey remained unavailable against
+the real provider boundary. Detailed checkpoint evidence and limitations are
+recorded in
 [WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md).
 
 
 ### Phase 1 fail-closed boundary
 
-Until the named live providers are connected, valid operational POST requests
-return `503 LIVE_PROVIDERS_NOT_CONNECTED`. They do not mint run identifiers or
+The current deployed smoke check confirms the fail-closed boundary. Until the
+named live providers are connected, a valid operational `POST` request returns
+HTTP (Hypertext Transfer Protocol) status
+`503 LIVE_PROVIDERS_NOT_CONNECTED`. It does not mint run identifiers or
 receipts, return the fixture predicate as live evidence, or silently substitute
-mocks for CockroachDB, Bedrock, Midnight, Lambda, or API Gateway.
+mocks for CockroachDB, Bedrock, Midnight, AWS (Amazon Web Services) Lambda, or
+Amazon API (Application Programming Interface) Gateway.
 
 ## Prior evidence that is not yet standalone proof
 

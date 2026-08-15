@@ -4,26 +4,39 @@ This runbook describes the intended public test environment. It does not claim t
 stack is deployed until [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) records
 current live evidence.
 
-> **Current AWS state, 2026-08-14:** The first create of
-> `mhelixctw-testwired` failed during API Gateway import and reached
-> `ROLLBACK_COMPLETE`. No application endpoint was created. Post-rollback
-> inspection found no application API, Lambda, IAM role, or application log
-> groups. The AWS SAM managed packaging stack and bucket remain and are not
-> application deployment evidence. A local source fix adds `servers[0].url`,
-> object-shaped root CORS, and a built-template contract. That fix has not been
-> redeployed successfully.
+> **Current cloud state, 2026-08-15:** The `mhelixctw-testwired`
+> AWS (Amazon Web Services) SAM (Serverless Application Model) application stack
+> is `CREATE_COMPLETE` at release
+> `578d565049e6d177c4b6fae4bb69fe4a2337173f`. Its generated
+> API (Application Programming Interface) address is
+> `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. Amplify application
+> `d23ghemtd40rom` serves branch `main` at
+> `https://main.d23ghemtd40rom.amplifyapp.com` and
+> `https://testwired.helixctw.com`. The custom address is `AVAILABLE`, returns
+> HTTP (Hypertext Transfer Protocol) status 200, and presents valid
+> TLS (Transport Layer Security) 1.3 without redirecting. Exact-origin
+> CORS (Cross-Origin Resource Sharing) passed for both frontend origins.
+> Downstream providers remain `NOT_CONNECTED`, `readyForMutations` is false,
+> and a valid mutation smoke check returns HTTP (Hypertext Transfer Protocol)
+> status `503 LIVE_PROVIDERS_NOT_CONNECTED`. This promotes cloud transport only;
+> the global `deploymentEvidence` value remains `SOURCE_ONLY`. The failed first
+> create remains documented in the
+> [sanitized rollback archive](archive/aws/2026-08-14-first-create-rollback.md).
 
 ## Target public surfaces
 
-1. AWS automatically supplies the first API URL after API Gateway deployment:
-   `https://{api-id}.execute-api.us-east-1.amazonaws.com`.
-2. The preferred public UI is `https://testwired.helixctw.com`.
-3. The preferred custom API name is `https://api-testwired.helixctw.com`.
+1. The deployed API (Application Programming Interface) is
+   `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`.
+2. The verified custom frontend is `https://testwired.helixctw.com`; its
+   generated recovery address is
+   `https://main.d23ghemtd40rom.amplifyapp.com`.
+3. A custom API (Application Programming Interface) alias is not configured.
 
-The generated AWS URL is sufficient for initial integration and judging. The two
-custom names require John to control `helixctw.com`, create the DNS records, and
-complete the AWS certificate/domain mapping. The generated URL does not require
-buying another domain.
+The generated addresses remain recovery paths. Cloudflare custom frontend setup
+is complete and did not change the root domain or `www` hostname. A future
+custom API (Application Programming Interface) alias would require controlled
+DNS (Domain Name System) records, certificate validation, exact-origin
+CORS (Cross-Origin Resource Sharing), and a verified domain mapping.
 
 ## Console links
 
@@ -43,7 +56,9 @@ Use one isolated environment:
 ```text
 application: MidnightHelixCTW
 build stage: TESTWIRED
-initial deployment evidence: SOURCE_ONLY
+global deployment evidence: SOURCE_ONLY
+cloud transport provider evidence: REALDEAL_TEST
+downstream provider connections: NOT_CONNECTED
 AWS stack: mhelixctw-testwired
 AWS region: us-east-1
 Cockroach database: mhelixctw_testwired
@@ -144,12 +159,16 @@ fallback:
 
 ## Step 5, connect the UI
 
-Configure the public UI with the generated API URL first. Do not display a connected
-badge until `/healthz`, `/api/v1/status`, the exact synthetic scenario catalog,
-and the guided flow pass from a signed-out browser.
+Branch `main` is already configured with `VITE_API_BASE_URL` set to the
+generated API (Application Programming Interface) address. Both the generated
+and custom frontend origins pass the read-only connection checks and exact-origin
+CORS (Cross-Origin Resource Sharing). The interface correctly keeps mutation
+controls unavailable because `readyForMutations` is false.
 
-Once stable, add the custom API domain and update exact CORS. Keep the generated
-AWS URL in the operator runbook as a recovery path.
+A custom API (Application Programming Interface) alias is not configured. If one
+is added later, update exact-origin CORS (Cross-Origin Resource Sharing), repeat
+the signed-out browser checks, and keep the generated address in this runbook as
+a recovery path.
 
 ## Step 6, public verification
 

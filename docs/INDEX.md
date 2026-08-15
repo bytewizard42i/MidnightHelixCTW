@@ -13,7 +13,7 @@ ledger.
 | Hackathon judge | [Project README](../README.md) | [Judge guide](JUDGE_GUIDE.md), [guided UI and narration](UI_AND_BROWSER_NARRATION.md), then the [guided scenario](JUDGE_SCENARIO.md) |
 | Technical reviewer | [Implementation status](IMPLEMENTATION_STATUS.md) | [Architecture](ARCHITECTURE.md), [API](../apps/api/README.md), and [AWS infrastructure](../infrastructure/aws/README.md) |
 | Developer | [Web application](../apps/web/README.md) and [API application](../apps/api/README.md) | [Protocol contracts](../packages/protocol-types/src/testwired-contracts.ts), [mock pillars](../packages/mock-pillars/README.md), and [fixtures](../fixtures/testtown/README.md) |
-| Deployment operator | [Deployment runbook](DEPLOYMENT_RUNBOOK.md) | [Security policy](../SECURITY.md), then the [publication checklist](PUBLICATION_CHECKLIST.md) |
+| Deployment operator | [Deployment runbook](DEPLOYMENT_RUNBOOK.md) | [Reusable AWS (Amazon Web Services) SAM (Serverless Application Model) and Amplify playbook](AWS_AMPLIFY_SAM_DEPLOYMENT_PLAYBOOK.md), [security policy](../SECURITY.md), then the [publication checklist](PUBLICATION_CHECKLIST.md) |
 | Eligibility or media reviewer | [Pre-existing work disclosure](../PREEXISTING_WORK.md) | [Media rights](../MEDIA_RIGHTS.md), [provenance](provenance/README.md), and [media review](media/CLAIM_REVIEW.md) |
 | Current-work reviewer | [August 14 work log](WORK_LOG_2026-08-14.md) | [Implementation status](IMPLEMENTATION_STATUS.md), including the [first AWS create attempt](IMPLEMENTATION_STATUS.md#2026-08-14-first-aws-create-attempt), and the [sanitized rollback archive](archive/aws/2026-08-14-first-create-rollback.md) |
 
@@ -44,9 +44,9 @@ This table is navigation, not a second truth ledger. If it conflicts with
 | Area | Implemented now | Next evidence-bearing step |
 | --- | --- | --- |
 | Public source and fixtures | Standalone source, licensing, curated synthetic TestTown fixtures, repository checks, and disclosures are present. | Repeat final source, link, ownership, and secret checks at the release commit. |
-| Judge web application | The Phase 1 interface source and local tests exist. Controls remain unavailable while the API reports that mutations are not ready. | Publish the browser URL, connect the generated API URL, and run signed-out desktop and mobile flows. |
-| API application | A bounded, dependency-free Lambda handler implements the eight fixed routes below. Read-only routes report status; operational routes fail closed while providers are disconnected. | Deploy API Gateway and Lambda, capture CloudWatch request evidence, and run read-only smoke checks. |
-| AWS infrastructure | A sanitized Serverless Application Model stack and operator scripts exist. The failed first-create stack was removed after rollback verification; corrective source is published on `main` but has not been redeployed. | Review the fix, deploy deliberately, and record the generated AWS URL and non-secret runtime evidence. |
+| Judge web application | Amplify application `d23ghemtd40rom` serves `main` at the generated origin and verified custom address. Signed-out hosting, read-only connection, and fail-closed checks pass; mutation controls remain disabled because `readyForMutations` is false. | Connect and verify downstream providers separately, then repeat the complete guided flow on desktop and mobile with clean browser console and network checks. |
+| API (Application Programming Interface) application | The bounded Lambda handler and eight-route contract are deployed at `https://iyoshkil91.execute-api.us-east-1.amazonaws.com` from release `578d565049e6d177c4b6fae4bb69fe4a2337173f`. Read-only routes and exact-origin CORS (Cross-Origin Resource Sharing) pass; a valid mutation returns `503 LIVE_PROVIDERS_NOT_CONNECTED`. | Connect and verify downstream providers separately while preserving the current fail-closed mutation boundary. |
+| AWS (Amazon Web Services) infrastructure | The `mhelixctw-testwired` SAM (Serverless Application Model) stack is `CREATE_COMPLETE` at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`. Amplify generated and custom hosts plus exact-origin CORS (Cross-Origin Resource Sharing) are verified. | Monitor the test stack and add narrow provider IAM (Identity and Access Management) permissions only after each downstream provider is ready for independent verification. |
 | Shared protocol contracts | TestWired stages, provider states, Morrow scenario identifiers, actions, responses, receipts, and the zero-protected-field invariant are typed and source-tested. | Use the shared contract at each integration boundary and keep the browser and Lambda payloads aligned. |
 | DIDz, AgenticDID, and RWAz | Synthetic fixtures and explicit `MOCK` boundaries exist; Phase 1 reports their callable connections as `NOT_CONNECTED`. | Implement and connect only the narrow deterministic provider interfaces, with denial tests. |
 | CockroachDB, Bedrock, Midnight, and Managed MCP | Their intended boundaries and promotion evidence are documented. They are not represented as connected by Phase 1. | Connect and verify each provider separately, recording sanitized request, query, proof, or receipt evidence. |
@@ -77,6 +77,11 @@ This table is navigation, not a second truth ledger. If it conflicts with
 
 - [DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md): generated URLs, account setup,
   deliberate AWS deployment, smoke testing, and rollback.
+- [AWS_AMPLIFY_SAM_DEPLOYMENT_PLAYBOOK.md](AWS_AMPLIFY_SAM_DEPLOYMENT_PLAYBOOK.md):
+  reusable sequencing, release gates, failure recovery, verification,
+  DNS (Domain Name System), and operational lessons for an Amplify frontend with
+  AWS (Amazon Web Services) SAM (Serverless Application Model) and an
+  API (Application Programming Interface).
 - [HACKATHON_REQUIREMENTS.md](HACKATHON_REQUIREMENTS.md): controlling submission
   requirements and the intended eligibility position.
 - [ROADMAP.md](../ROADMAP.md): dated target gates and actual-progress notes.
