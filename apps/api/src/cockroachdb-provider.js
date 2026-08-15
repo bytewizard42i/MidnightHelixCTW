@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  MHELIX_ENVIRONMENT_MARKER_BUILD_STAGE,
+  MHELIX_ENVIRONMENT_MARKER_ID,
+  MHELIX_ENVIRONMENT_MARKER_VERSION,
+} from "./environment-marker.js";
+
 /**
  * This module deliberately depends on a tiny query-executor interface instead
  * of a database driver. A later, separately reviewed bootstrap can provide an
@@ -17,8 +23,11 @@
  * }} CockroachQueryExecutor
  */
 
-export const MHELIX_ENVIRONMENT_MARKER_ID = "mhelixctw-testwired-environment";
-export const MHELIX_ENVIRONMENT_MARKER_VERSION = 1;
+export {
+  MHELIX_ENVIRONMENT_MARKER_BUILD_STAGE,
+  MHELIX_ENVIRONMENT_MARKER_ID,
+  MHELIX_ENVIRONMENT_MARKER_VERSION,
+};
 export const MHELIX_COCKROACH_PROBE_SCHEMA_VERSION =
   "mhelixctw/cockroach-probe/v1";
 
@@ -127,7 +136,7 @@ function validateProbeRow(row) {
     row.database_matches !== true ||
     row.runtime_user_matches !== true ||
     row.marker_id !== MHELIX_ENVIRONMENT_MARKER_ID ||
-    row.build_stage !== "TESTWIRED" ||
+    row.build_stage !== MHELIX_ENVIRONMENT_MARKER_BUILD_STAGE ||
     Number(row.marker_version) !== MHELIX_ENVIRONMENT_MARKER_VERSION ||
     row.marker_commitment_matches !== true ||
     typeof row.evidence_receipt_id !== "string" ||

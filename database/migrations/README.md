@@ -68,3 +68,59 @@ checksum, installs the marker, and a real CockroachDB query produces sanitized
 evidence. The Lambda runtime will eventually receive only a named AWS (Amazon Web
 Services) Secrets Manager reference and narrow data permissions, never schema
 ownership or plaintext connection material in the browser or repository.
+
+## Canonical TestWired environment marker
+
+`apps/api/src/environment-marker.js` is the single handwritten
+machine-readable authority for the TestWired environment marker. The database
+ledger row, database marker row, and deployment configuration are projections
+of that source contract. They are never alternate sources of truth.
+
+The canonical preimage is exactly these eight UTF-8 (Unicode Transformation
+Format 8-bit) lines:
+
+```text
+mhelixctw/environment-marker/v1
+marker_id=mhelixctw-testwired-environment
+build_stage=TESTWIRED
+marker_version=1
+migration_id=001_testwired_memory_core
+source_file_name=database/migrations/001_testwired_memory_core.sql
+migration_sha256=e8f4e393dbe48d34e0bbf6e88d884a4a3380fd49c868f649b33c44186e5e488b
+statement_count=16
+```
+
+The fields use this order, LF (line feed) separators, no trailing LF (line
+feed), no CR (carriage return), no BOM (byte order mark), and no additional
+spaces or tabs. `source_file_name` is a forward-slash repository-relative path
+with no leading slash or `./`. `statement_count` is the reviewed number of
+top-level executable SQL (Structured Query Language) statements in the exact
+migration source, excluding comments and blank lines, with each statement
+terminated by one semicolon. Migration 001 contains 1 schema statement, 10
+table statements, and 5 index statements, for a total of 16.
+
+The canonical SHA-256 (Secure Hash Algorithm 256-bit) commitment is:
+
+```text
+ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198
+```
+
+The commitment is public deterministic configuration-drift evidence. It is not
+a secret, authentication mechanism, signature, proof of writer identity, proof
+that the migration executed, or proof of persistence, vector retrieval,
+Midnight, Bedrock, or MCP (Model Context Protocol) behavior. Separate transport,
+credential, ownership, grant, migration-output, and runtime-denial evidence is
+required.
+
+Before activation or rotation, run:
+
+```bash
+node --test apps/api/test/environment-marker.test.mjs apps/api/test/cockroachdb-provider.test.mjs
+npm test --workspace @mhelix/api
+npm run verify
+```
+
+Do not use `UPSERT` or `ON CONFLICT` to conceal a pre-existing ledger or marker
+row. A conflict is a fail-closed review event. Do not insert either row until
+the source contract and deterministic tests are committed at the release being
+activated.
