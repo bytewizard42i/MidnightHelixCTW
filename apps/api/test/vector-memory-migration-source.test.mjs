@@ -396,9 +396,20 @@ function collectVerifierViolations(rawSql) {
     [/EXCEPT/, "two-way-grant-comparison-missing"],
     [/is_grantable/, "grantable-check-missing"],
     [/ON DATABASE mhelix_testwired\]/, "database-connect-check-missing"],
-    [/schema_privileges/, "schema-usage-check-missing"],
+
     [/owner/, "ownership-check-missing"],
     [/SHOW GRANTS ON ROLE FOR/, "role-membership-check-missing"],
+    // Effective-privilege proofs: inheritance through `public`, system
+    // privileges, and role options are all part of the privilege surface.
+    [/grantee = 'public'/, "public-inheritance-check-missing"],
+    [/SHOW SYSTEM GRANTS/, "system-privilege-check-missing"],
+    [/SHOW ROLES/, "role-option-check-missing"],
+    [/SHOW GRANTS ON SCHEMA/, "schema-grant-effective-check-missing"],
+    // Exact shape proofs rather than counts.
+    [/ordinal_position/, "exact-foreign-key-order-check-missing"],
+    [/key_column_usage/, "key-column-usage-check-missing"],
+    [/FOREIGN KEY \(run_id, action_receipt_id, operation\) REFERENCES/, "exact-receipt-key-definition-check-missing"],
+    [/vector_cosine_ops\)%'/, "exact-vector-index-definition-check-missing"],
   ]) {
     if (!pattern.test(executable)) {
       violations.push(violation);
@@ -789,6 +800,26 @@ test("verifier guards reject vacuous and incomplete verification", async () => {
       "mutating statement introduced",
       `${verifier}\nDELETE FROM mhelix_testwired.mhelix_recall_result_items;`,
       "verifier-not-read-only",
+    ],
+    [
+      "public inheritance check removed",
+      verifier.replaceAll("grantee = 'public'", "grantee = 'nobody_at_all'"),
+      "public-inheritance-check-missing",
+    ],
+    [
+      "system privilege check removed",
+      verifier.replaceAll("SHOW SYSTEM GRANTS", "SHOW NOTHING"),
+      "system-privilege-check-missing",
+    ],
+    [
+      "role option check removed",
+      verifier.replaceAll("SHOW ROLES", "SHOW NOTHING"),
+      "role-option-check-missing",
+    ],
+    [
+      "exact foreign-key order check downgraded to a count",
+      verifier.replaceAll("ordinal_position", "ignored_position"),
+      "exact-foreign-key-order-check-missing",
     ],
   ];
 

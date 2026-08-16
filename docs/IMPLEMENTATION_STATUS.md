@@ -102,11 +102,14 @@ capability activation, Managed MCP (Model Context Protocol) access, and hosted
 execution all remain unverified. Only a live `EXPLAIN` showing a vector search
 with prefix spans could establish index use.
 
-`mhelixctw-synthetic-embedding-v1` is a **reserved identifier for a planned
-deterministic generator that does not exist yet**; no code here produces an
-embedding under that name. It is deliberately not an AWS (Amazon Web Services)
-Bedrock Titan identifier, because Amazon Titan Text Embeddings V2 produces 256,
-512, or 1,024 dimensions, never eight.
+`mhelixctw-synthetic-embedding-v1` is now implemented as deterministic fixture
+code in `packages/mock-pillars/src/synthetic-embedding.js`, and the committed
+public-safe corpus in `fixtures/testtown/memory-corpus/` carries its vectors.
+It is labeled `MOCK` everywhere: it calls no machine-learning model and produces
+no semantic understanding, so only the vector's origin is a fixture. It is
+deliberately not an AWS (Amazon Web Services) Bedrock Titan identifier, because
+Amazon Titan Text Embeddings V2 produces 256, 512, or 1,024 dimensions, never
+eight.
 
 The grant packet is `SELECT` only. Runtime `INSERT` and `UPDATE` are withheld
 until the exact-statement application executor and the database mutation

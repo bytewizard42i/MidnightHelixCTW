@@ -18,6 +18,20 @@
 -- filtered on `release_commit = $1`, so a capability row installed for a
 -- different release can never satisfy this verification.
 --
+-- WHAT THIS PROVES, AND WHAT IT DOES NOT. These checks prove INTERNAL
+-- CONSISTENCY only: that a capability row exists for the commit label the
+-- operator supplied, and that its commitment was derived from the canonical
+-- preimage over the marker and the applied migration ledger.
+--
+-- They do NOT prove that the supplied label is the release actually running in
+-- production, and they do NOT prove the label is authentic. The label is an
+-- operator-supplied string; nothing inside the database can attest to what code
+-- is deployed. Deployment equality is a SEPARATE, INDEPENDENT check: compare
+-- this expected commit against the `releaseCommit` reported by the deployed
+-- public endpoint after deployment. Until that comparison passes, a green
+-- result here means "the database agrees with itself", not "the right code is
+-- live".
+--
 -- IT RECOMPUTES THE COMMITMENT rather than trusting the stored bytes: the
 -- expected value is derived here from the same fixed, domain-separated
 -- preimage, using values read from the database, and compared to what is

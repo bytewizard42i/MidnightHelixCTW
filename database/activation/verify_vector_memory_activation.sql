@@ -169,30 +169,66 @@ SELECT (
             AND index_name = 'idx_mhelix_recall_result_items_receipt'
        ) = 0 AS no_redundant_receipt_rank_index;
 
--- 6. Every required constraint exists on the new tables. Counting by type
--- means a dropped or never-created foreign key, unique constraint, or check
--- constraint fails.
+-- 6. EXACT foreign-key column lists, in order, not merely a count.
+--
+-- A count would pass if a composite key were replaced by a weaker
+-- single-column key. `key_column_usage.ordinal_position` gives the exact
+-- ordered column list, so the cross-run and cross-projection boundaries are
+-- proven rather than assumed.
+--
+-- Each subquery counts the ordered positions that match the expected column,
+-- so it equals the key's full width only when every position is exactly right.
 SELECT (
+         SELECT count(*)
+           FROM information_schema.key_column_usage AS k
+           JOIN information_schema.table_constraints AS t
+             ON t.constraint_name = k.constraint_name
+            AND t.constraint_schema = k.constraint_schema
+          WHERE t.table_schema = 'mhelix_testwired'
+            AND t.table_name = 'mhelix_recall_result_items'
+            AND t.constraint_type = 'FOREIGN KEY'
+            AND (
+              (k.ordinal_position = 1 AND k.column_name = 'run_id')
+              OR (k.ordinal_position = 2 AND k.column_name = 'action_receipt_id')
+              OR (k.ordinal_position = 3 AND k.column_name = 'operation')
+            )
+       ) = 3 AS recall_receipt_key_is_exactly_run_receipt_operation,
+       (
+         SELECT count(*)
+           FROM information_schema.key_column_usage AS k
+           JOIN information_schema.table_constraints AS t
+             ON t.constraint_name = k.constraint_name
+            AND t.constraint_schema = k.constraint_schema
+          WHERE t.table_schema = 'mhelix_testwired'
+            AND t.table_name = 'mhelix_recall_result_items'
+            AND t.constraint_type = 'FOREIGN KEY'
+            AND (
+              (k.ordinal_position = 1 AND k.column_name = 'run_id')
+              OR (k.ordinal_position = 2 AND k.column_name = 'projection_generation_id')
+              OR (k.ordinal_position = 3 AND k.column_name = 'memory_summary_id')
+            )
+       ) = 3 AS recall_embedding_key_is_exactly_run_projection_summary,
+       (
          SELECT count(*)
            FROM information_schema.table_constraints
           WHERE table_schema = 'mhelix_testwired'
             AND table_name = 'mhelix_memory_summary_embeddings'
             AND constraint_type = 'FOREIGN KEY'
-       ) = 4 AS embeddings_have_four_foreign_keys,
+       ) = 4 AS embeddings_have_exactly_four_foreign_keys,
        (
          SELECT count(*)
            FROM information_schema.table_constraints
           WHERE table_schema = 'mhelix_testwired'
             AND table_name = 'mhelix_recall_result_items'
             AND constraint_type = 'FOREIGN KEY'
-       ) = 2 AS recall_results_have_two_foreign_keys,
+       ) = 2 AS recall_results_have_exactly_two_foreign_keys,
        (
          SELECT count(*)
            FROM information_schema.table_constraints
           WHERE table_schema = 'mhelix_testwired'
             AND table_name = 'mhelix_run_active_projections'
             AND constraint_type = 'FOREIGN KEY'
-       ) = 2 AS run_bindings_have_two_foreign_keys,
+       ) = 2 AS run_bindings_have_exactly_two_foreign_keys,
        (
          SELECT count(*)
            FROM information_schema.table_constraints
@@ -200,6 +236,44 @@ SELECT (
             AND table_name = 'mhelix_runtime_capabilities'
             AND constraint_type = 'FOREIGN KEY'
        ) = 1 AS capabilities_reference_the_marker;
+
+-- 6b. EXACT critical definitions, read from the tables' own CREATE statements.
+--
+-- These are full canonical constraint and index texts, not loose keyword
+-- searches: each expected string below is the exact definition the migration
+-- declares, so a weakened or re-ordered constraint fails. This is the strongest
+-- readback available without a live schema diff tool.
+SELECT (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_memory_summary_embeddings]
+          WHERE create_statement LIKE '%VECTOR INDEX vec_mhelix_summary_embeddings_run_projection (run_id ASC, projection_generation_id ASC, embedding vector_cosine_ops)%'
+             OR create_statement LIKE '%VECTOR INDEX vec_mhelix_summary_embeddings_run_projection (run_id, projection_generation_id, embedding vector_cosine_ops)%'
+       ) = 1 AS vector_index_definition_is_exact,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_recall_result_items]
+          WHERE create_statement LIKE '%CHECK ((operation = ''recall''%'
+       ) = 1 AS recall_operation_check_is_exact,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_recall_result_items]
+          WHERE create_statement LIKE '%FOREIGN KEY (run_id, action_receipt_id, operation) REFERENCES mhelix_testwired.mhelix_action_receipts(run_id, action_receipt_id, operation)%'
+       ) = 1 AS recall_receipt_foreign_key_definition_is_exact,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_runtime_capabilities]
+          WHERE create_statement LIKE '%CHECK ((NOT public_mutations_enabled)%'
+       ) = 1 AS mutation_claim_guard_definition_is_exact,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_action_receipts]
+          WHERE create_statement LIKE '%transport_request_id%[A-Za-z0-9._:-]{1,128}%'
+       ) = 1 AS transport_identifier_pattern_is_exact;
 
 -- 7. The recall-result run and operation binding, the mutation-claim guard,
 -- and the transport-identifier pattern all exist as CHECK constraints with the
@@ -317,14 +391,19 @@ SELECT (SELECT count(*) FROM actual_grant) = 12 AS runtime_grant_count_is_exact,
             AND table_name = 'mhelix_schema_migrations'
        ) = 0 AS runtime_has_no_migration_ledger_privilege;
 
--- 10. Database CONNECT and schema USAGE exist, and neither is grantable.
+-- 10. EFFECTIVE database and schema privileges, read through `SHOW GRANTS`.
+--
+-- `SHOW GRANTS` reports effective privileges including anything inherited, so
+-- it is the authority here. `information_schema.schema_privileges.is_grantable`
+-- is deliberately NOT used to decide schema grantability, because that column
+-- is not a dependable proof of the grant option at schema level.
 SELECT (
          SELECT count(*)
            FROM [SHOW GRANTS ON DATABASE mhelix_testwired]
           WHERE grantee = 'mhelix_runtime'
             AND privilege_type = 'CONNECT'
             AND NOT is_grantable
-       ) = 1 AS runtime_has_database_connect,
+       ) = 1 AS runtime_has_database_connect_not_grantable,
        (
          SELECT count(*)
            FROM [SHOW GRANTS ON DATABASE mhelix_testwired]
@@ -333,18 +412,69 @@ SELECT (
        ) = 0 AS runtime_has_no_other_database_privilege,
        (
          SELECT count(*)
-           FROM information_schema.schema_privileges
-          WHERE table_schema = 'mhelix_testwired'
-            AND grantee = 'mhelix_runtime'
+           FROM [SHOW GRANTS ON SCHEMA mhelix_testwired]
+          WHERE grantee = 'mhelix_runtime'
             AND privilege_type = 'USAGE'
-       ) = 1 AS runtime_has_schema_usage,
+            AND NOT is_grantable
+       ) = 1 AS runtime_has_schema_usage_not_grantable,
        (
          SELECT count(*)
-           FROM information_schema.schema_privileges
-          WHERE table_schema = 'mhelix_testwired'
-            AND grantee = 'mhelix_runtime'
+           FROM [SHOW GRANTS ON SCHEMA mhelix_testwired]
+          WHERE grantee = 'mhelix_runtime'
             AND privilege_type <> 'USAGE'
        ) = 0 AS runtime_has_no_other_schema_privilege;
+
+-- 11. PRIVILEGES REACHING THE RUNTIME THROUGH `public`.
+--
+-- Every role is implicitly a member of `public`, so a grant to `public` is a
+-- grant to the runtime role even though it never appears as a direct grant.
+-- Missing this is the classic way a "least privilege" claim turns out false.
+SELECT (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON DATABASE mhelix_testwired]
+          WHERE grantee = 'public'
+            AND privilege_type <> 'CONNECT'
+       ) = 0 AS public_has_no_extra_database_privilege,
+       (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON SCHEMA mhelix_testwired]
+          WHERE grantee = 'public'
+       ) = 0 AS public_has_no_schema_privilege,
+       (
+         SELECT count(*)
+           FROM information_schema.table_privileges
+          WHERE table_schema = 'mhelix_testwired'
+            AND grantee = 'public'
+       ) = 0 AS public_has_no_table_privilege;
+
+-- 12. SYSTEM-LEVEL privileges and role options.
+--
+-- Table grants are not the whole privilege surface. A system privilege such as
+-- the ability to modify cluster settings, or a role option such as
+-- CREATEROLE or CREATELOGIN, would defeat least privilege without appearing in
+-- any table-level check.
+SELECT (
+         SELECT count(*)
+           FROM [SHOW SYSTEM GRANTS]
+          WHERE grantee = 'mhelix_runtime'
+       ) = 0 AS runtime_holds_no_system_privilege,
+       (
+         SELECT count(*)
+           FROM [SHOW SYSTEM GRANTS]
+          WHERE grantee = 'public'
+       ) = 0 AS public_holds_no_system_privilege,
+       (
+         SELECT count(*)
+           FROM [SHOW ROLES]
+          WHERE username = 'mhelix_runtime'
+            AND options <> '{}'
+       ) = 0 AS runtime_has_no_role_options,
+       (
+         SELECT count(*)
+           FROM [SHOW ROLES]
+          WHERE username = 'mhelix_runtime'
+            AND member_of <> '{}'
+       ) = 0 AS runtime_belongs_to_no_role;
 
 -- 11. Ownership and role membership. The runtime role must own nothing in this
 -- schema and must inherit no dangerous role. Ownership carries implicit full

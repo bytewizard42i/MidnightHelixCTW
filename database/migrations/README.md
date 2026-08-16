@@ -223,9 +223,11 @@ encryption keys, Filecoin payloads, or protected document bytes. There is
 deliberately no free-text content column, and the source-contract test rejects
 one if it is ever added.
 
-`mhelixctw-synthetic-embedding-v1` is a **reserved identifier for a planned
-deterministic generator. That generator does not exist yet**; no code in this
-repository produces an embedding under that name. It is deliberately not an
+`mhelixctw-synthetic-embedding-v1` is implemented as deterministic fixture code
+in `packages/mock-pillars/src/synthetic-embedding.js`, and the committed
+public-safe corpus in `fixtures/testtown/memory-corpus/` carries its vectors.
+It is labeled `MOCK` everywhere: it calls no machine-learning model and
+produces no semantic understanding. It is deliberately not an
 AWS (Amazon Web Services) Bedrock Titan identifier, because Amazon Titan Text
 Embeddings V2 produces 256, 512, or 1,024 dimensions, never eight, so naming
 Titan here would be false.
