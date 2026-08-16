@@ -39,7 +39,8 @@ successful output carrying a sanitized real test-service receipt.
 | CockroachDB applied database and schema foundation | LIVE TESTWIRED | Database and schema `mhelix_testwired` are live. Migration `001_testwired_memory_core.sql` was applied, creating 10 tables owned by `mhelix_migrator`. The migrator and runtime users do not inherit `admin`; runtime has database `CONNECT`, schema `USAGE`, and `SELECT` only on the marker table, while `SELECT` on `mhelix_runs` is denied. Exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback. This status proves only the named foundation, activation, and grants. |
 | CockroachDB Cloud connection and TestWired environment probe | REALDEAL_TEST | The deployed Helix Runtime Bridge (AWS (Amazon Web Services) Lambda) release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` carries the reviewed read-only bootstrap, and the public `/api/v1/status` route reads the bounded environment-marker probe back as `REALDEAL_TEST` and `CONNECTED` with a sanitized evidence receipt identifier. The probe proves the connection, runtime identity, and reviewed TestWired marker only. It neither proves nor enables memory persistence, vector retrieval, Managed MCP (Model Context Protocol), or mutations; the overall application remains `NOT_CONNECTED` and `readyForMutations` remains `false`. Evidence: [the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md). |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
-| CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
+| CockroachDB vector-memory database slice | SOURCE ONLY | Migration `002_testwired_vector_memory.sql` and its activation, grant, capability, and read-back sources exist and pass their source-contract tests. Nothing has been applied: no migration run, no grant executed, no capability row inserted, no vector stored, and no query plan observed. The grant packet is `SELECT` only; runtime `INSERT` and `UPDATE` are deferred until the exact-statement application executor and the database mutation boundary are reviewed together. Promotion requires an applied migration, executed grants, and a sanitized boolean read-back transcript. |
+| CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. The committed slice above uses a synthetic eight-dimensional model identifier, not Titan, so this row stays `PLANNED` until a real embedding and a live `EXPLAIN` showing vector-index use exist. |
 | CockroachDB Managed MCP (Model Context Protocol) | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
 | AWS (Amazon Web Services) Lambda and Amazon API (Application Programming Interface) Gateway | LIVE TESTWIRED | The `mhelixctw-testwired` stack (first created at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`) is now `UPDATE_COMPLETE` at release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` with handler `src/lambda.handler`; its generated address is `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. The public read-only smoke contract passed for health, status, scenarios, exact-origin CORS (Cross-Origin Resource Sharing), release identity, and a denied mutation. This promotion applies only to cloud transport plus the bounded read-only database probe; all other downstream providers remain `NOT_CONNECTED`. |
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
@@ -83,6 +84,51 @@ vectors, capability activation, Managed MCP (Model Context Protocol), Bedrock,
 Midnight, or mutations. `readyForMutations` remains `false` and the overall
 application remains `NOT_CONNECTED`. Sanitized evidence:
 [the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md).
+
+### 2026-08-16 vector-memory database slice checkpoint (source only)
+
+The additive vector-memory slice exists in reviewed source and is
+`SOURCE_ONLY`. `database/migrations/002_testwired_vector_memory.sql` adds a
+release-bound runtime capability marker, run-specific active projection
+bindings, privacy-safe `VECTOR(8)` summary embeddings with a cosine-optimized
+vector index, immutable ranked recall-result items, and an additive nullable
+transport request identifier on action receipts. Its activation, least-privilege
+grant, and boolean-only read-back sources are committed alongside it.
+
+**Nothing was executed.** No connection was opened, no migration applied, no
+privilege granted, no capability row inserted, no cluster setting changed, and
+no vector query or `EXPLAIN` run. Vector retrieval, vector-index use,
+capability activation, Managed MCP (Model Context Protocol) access, and hosted
+execution all remain unverified. Only a live `EXPLAIN` showing a vector search
+with prefix spans could establish index use.
+
+`mhelixctw-synthetic-embedding-v1` is now implemented as deterministic fixture
+code in `packages/mock-pillars/src/synthetic-embedding.js`, and the committed
+public-safe corpus in `fixtures/testtown/memory-corpus/` carries its vectors.
+It is labeled `MOCK` everywhere: it calls no machine-learning model and produces
+no semantic understanding, so only the vector's origin is a fixture. It is
+deliberately not an AWS (Amazon Web Services) Bedrock Titan identifier, because
+Amazon Titan Text Embeddings V2 produces 256, 512, or 1,024 dimensions, never
+eight.
+
+The grant packet is `SELECT` only. Runtime `INSERT` and `UPDATE` are withheld
+until the exact-statement application executor and the database mutation
+boundary are reviewed together, so this slice grants no write privilege at all.
+The capability guard `public_mutations_enabled = false` prevents a capability
+row from *claiming* mutation readiness; it does not independently prevent every
+table mutation, and the application executor is still required before any
+public write.
+
+Applying the migration additionally requires the cluster setting
+`feature.vector_index.enabled = true`, which this source deliberately does not
+set. The vector index itself is on a new empty table; the statements that
+backfill existing data are the two additive unique indexes on the populated
+migration-001 tables, which should be applied during a quiet period with the
+schema-change job monitored. The `managed-mcp` identity still inherits `admin`
+and therefore must not be called least-privileged; that correction is a
+separate authorized live operation. Details, the capability preimage, and the
+parameterized activation helper are described in
+[the migrations README](../database/migrations/README.md).
 
 ### 2026-08-15 CockroachDB foundation checkpoint
 
