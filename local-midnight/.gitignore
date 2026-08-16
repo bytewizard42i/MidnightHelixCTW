@@ -6,6 +6,10 @@ midnight-level-db/
 # testkit-js default logger output directory.
 logs/
 
+# Timestamped recoverable archives of the directories above (created by
+# scripts/archive-state.sh during resets). Never committed.
+state-archive/
+
 # Compiler output: proving/verifying keys, ZK IR, generated JS. Rebuildable
 # from the contract source with `compact compile`; large and never committed.
 artifacts/

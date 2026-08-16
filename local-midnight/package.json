@@ -8,14 +8,15 @@
     "node": ">=22"
   },
   "scripts": {
-    "compile:contract": "compact compile contracts/smoke_commitment.compact artifacts/smoke_commitment",
-    "net:up": "docker compose -f standalone.yml up -d",
+    "preflight": "node scripts/preflight-node.mjs",
+    "compile:contract": "npm run preflight && compact compile contracts/smoke_commitment.compact artifacts/smoke_commitment",
+    "net:up": "docker compose -f standalone.yml up -d && bash scripts/wait-healthy.sh",
     "net:ps": "docker compose -f standalone.yml ps",
     "net:logs": "docker compose -f standalone.yml logs -f",
     "net:down": "docker compose -f standalone.yml down --remove-orphans",
-    "net:reset": "npm run net:down && npm run state:clean && npm run net:up",
-    "state:clean": "rm -rf .state",
-    "smoke": "node --experimental-strip-types smoke-test.mts",
+    "net:reset": "npm run net:down && npm run state:archive && npm run net:up",
+    "state:archive": "bash scripts/archive-state.sh",
+    "smoke": "npm run preflight && node --experimental-strip-types smoke-test.mts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,10 +1,18 @@
-// MidnightHelixCTW smoke contract.
+// MidnightHelixCTW smoke contract — LOCAL TRANSACTION CANARY ONLY.
 //
-// The smallest useful loop-prover: record one opaque 32-byte commitment and
-// count how many have been recorded. It mirrors the eventual real shape
-// (a commitment registry) without touching any real or private data.
-// The contract never sees the committed value — only the caller-supplied
-// randomized commitment, which is safe to publish by construction.
+// The smallest useful loop-prover: record one opaque 32-byte value and
+// count how many have been recorded. In this test flow the bytes are
+// generated randomly by the smoke driver itself.
+//
+// Honest limits (read before reusing this shape):
+// - This circuit is PERMISSIONLESS and LOCAL-ONLY. It proves that the
+//   toolchain, deployment, transaction, and ledger-readback path work.
+// - Compact enforces the ledger transition for whatever bytes it
+//   receives; it CANNOT prove that caller-supplied bytes were honestly
+//   randomized, safe, authorized, or a cryptographic commitment to any
+//   private data.
+// - This is NOT private DID (Decentralized Identifier) authorization and
+//   NOT production privacy. Never supply sensitive data to this canary.
 
 pragma language_version >= 0.22 && <= 0.23;
 
@@ -16,11 +24,12 @@ export ledger commitmentCount: Counter;
 // The most recently recorded 32-byte commitment (public, opaque).
 export ledger latestCommitment: Bytes<32>;
 
-// Record one opaque commitment on the public ledger.
+// Record one opaque 32-byte value on the public ledger.
 // Circuit parameters are private (witness) data by default in Compact, so
 // writing the parameter to a public ledger field requires an explicit
-// disclose(), which documents that publishing it is intentional and safe:
-// the value is already a randomized commitment, not evidence.
+// disclose(), which documents that publishing is intentional. In this
+// canary the driver supplies random bytes; the contract cannot verify
+// that property — callers must never pass sensitive data here.
 export circuit recordCommitment(commitment: Bytes<32>): [] {
   latestCommitment = disclose(commitment);
   commitmentCount.increment(1);

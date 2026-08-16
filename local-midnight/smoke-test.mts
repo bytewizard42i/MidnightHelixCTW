@@ -1,9 +1,15 @@
-// MidnightHelixCTW local smoke-test driver.
+// MidnightHelixCTW local smoke-test driver (local transaction canary).
 //
 // End-to-end proof for the pinned local devnet: build the genesis dev
-// wallet, deploy the compiled smoke contract, submit ONE randomized
-// commitment, read the public ledger back through the indexer, and emit a
-// sanitized JSON receipt. Fail-closed everywhere: any mismatch exits 1.
+// wallet, deploy the compiled canary contract, submit ONE 32-byte value
+// generated randomly BY THIS DRIVER, read the public ledger back through
+// the indexer, and emit a sanitized JSON receipt. Fail-closed everywhere:
+// any mismatch exits 1.
+//
+// Scope honesty: this canary proves the toolchain and readback path. The
+// contract cannot verify that submitted bytes are random, safe,
+// authorized, or a commitment to private data — it is permissionless and
+// local-only, not private DID (Decentralized Identifier) authorization.
 //
 // Evidence label ladder (docs/MIDNIGHT_TRUST_BOUNDARY.md): success here is
 // `VERIFIED LOCAL` at most — a local disposable chain proves mechanics,
@@ -27,6 +33,7 @@
 // its output. The genesis dev seed arrives via the process environment.
 
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { WebSocket } from 'ws';
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -60,7 +67,28 @@ function toHex(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('hex');
 }
 
+// Provenance guard: the receipt must be bound to the exact committed
+// source that produced it, so the driver derives the full 40-hex Git HEAD
+// itself (no caller-supplied override — a caller must not be able to
+// forge provenance) and REFUSES to run when tracked source is dirty.
+// Ignored runtime state (node_modules/, artifacts/, state dirs) may
+// remain; `git status --porcelain -uno` reports tracked files only.
+function requireCleanCommittedHead(): string {
+  const gitOptions = { encoding: 'utf8' as const };
+  const dirty = execFileSync('git', ['status', '--porcelain', '-uno'], gitOptions).trim();
+  if (dirty.length > 0) {
+    fail(`tracked source is dirty; commit or stash before running smoke:\n${dirty}`);
+  }
+  const head = execFileSync('git', ['rev-parse', 'HEAD'], gitOptions).trim();
+  if (!/^[0-9a-f]{40}$/.test(head)) fail(`unexpected git HEAD format: ${head}`);
+  console.log(`provenance: clean tracked tree at commit ${head}`);
+  return head;
+}
+
 async function main(): Promise<void> {
+  // 0. Provenance first: derive the clean committed HEAD before any work.
+  const sourceCommit = requireCleanCommittedHead();
+
   // 1. Network identity + WebSocket polyfill for the wallet SDK in Node.
   setNetworkId('undeployed');
   globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
@@ -153,7 +181,7 @@ async function main(): Promise<void> {
     circuit: 'recordCommitment',
     publicCommitmentHex: readBackHex,
     checks: { commitmentCountIsOne: countOk, commitmentMatches: commitmentOk },
-    sourceCommit: process.env.SMOKE_SOURCE_COMMIT ?? 'unset',
+    sourceCommit,
     compiler: COMPILER_VERSION,
     images: IMAGE_VERSIONS,
     timestamp: new Date().toISOString(),
