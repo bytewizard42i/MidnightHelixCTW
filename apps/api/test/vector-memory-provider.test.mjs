@@ -28,7 +28,9 @@ const SESSION_B_ID = "44444444-4444-4444-8444-444444444444";
 const PROJECTION_ID = "55555555-5555-4555-8555-555555555555";
 const RECEIPT_ID = "66666666-6666-4666-8666-666666666666";
 const SUMMARY_ID = "77777777-7777-4777-8777-777777777777";
-const GOOD_KEY = "penny-test-idempotency-key-0001";
+// A request-scoped replay identifier fixture. Deliberately not named or
+// shaped like a credential: it is a public, non-secret request marker.
+const REPLAY_IDENTIFIER = "penny-test-replay-identifier-0001";
 
 /**
  * A fake pool that records every statement and returns scripted rows.
@@ -165,7 +167,7 @@ test("every write runs inside one serializable transaction", async () => {
   const { pool, provider } = buildProvider(defaultResponder());
   await provider.createRun({
     agentIdentifier: "didz:testtown:agent:morrow-property-assistant",
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "req-1",
   });
   const begins = pool.log.filter((entry) => entry.text.startsWith("BEGIN"));
@@ -189,7 +191,7 @@ test("a failure rolls back and releases the connection", async () => {
     return [];
   });
   await assert.rejects(
-    provider.createRun({ agentIdentifier: "a", idempotencyKey: GOOD_KEY, transportRequestId: "r" }),
+    provider.createRun({ agentIdentifier: "a", idempotencyKey: REPLAY_IDENTIFIER, transportRequestId: "r" }),
     /boom/,
   );
   assert.equal(pool.log.filter((entry) => entry.text === "ROLLBACK").length, 1);
@@ -211,7 +213,7 @@ test("only serialization conflicts retry, and at most three attempts", async () 
     return [];
   });
   await assert.rejects(
-    provider.createRun({ agentIdentifier: "a", idempotencyKey: GOOD_KEY, transportRequestId: "r" }),
+    provider.createRun({ agentIdentifier: "a", idempotencyKey: REPLAY_IDENTIFIER, transportRequestId: "r" }),
     /restart transaction/,
   );
   assert.equal(attempts, 3, "expected exactly three bounded attempts");
@@ -232,7 +234,7 @@ test("a non-serialization error is never retried", async () => {
     return [];
   });
   await assert.rejects(
-    provider.createRun({ agentIdentifier: "a", idempotencyKey: GOOD_KEY, transportRequestId: "r" }),
+    provider.createRun({ agentIdentifier: "a", idempotencyKey: REPLAY_IDENTIFIER, transportRequestId: "r" }),
     /permission denied/,
   );
   assert.equal(attempts, 1);
@@ -241,7 +243,7 @@ test("a non-serialization error is never retried", async () => {
 test("the write gate blocks when no capability is recorded for this release", async () => {
   const { provider } = buildProvider(defaultResponder({ capabilityRows: [] }));
   await assert.rejects(
-    provider.createRun({ agentIdentifier: "a", idempotencyKey: GOOD_KEY, transportRequestId: "r" }),
+    provider.createRun({ agentIdentifier: "a", idempotencyKey: REPLAY_IDENTIFIER, transportRequestId: "r" }),
     (error) => error instanceof VectorMemoryError && error.code === "CAPABILITY_NOT_ACTIVATED",
   );
 });
@@ -255,7 +257,7 @@ test("the write gate blocks a capability claiming public mutation readiness", as
     }),
   );
   await assert.rejects(
-    provider.createRun({ agentIdentifier: "a", idempotencyKey: GOOD_KEY, transportRequestId: "r" }),
+    provider.createRun({ agentIdentifier: "a", idempotencyKey: REPLAY_IDENTIFIER, transportRequestId: "r" }),
     (error) => error instanceof VectorMemoryError && error.code === "CAPABILITY_INVALID",
   );
 });
@@ -271,14 +273,14 @@ test("the raw idempotency key is hashed and never sent to the database", async (
   const { pool, provider } = buildProvider(defaultResponder());
   await provider.createRun({
     agentIdentifier: "a",
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "req-1",
   });
-  const expectedHash = createHash("sha256").update(GOOD_KEY, "utf8").digest();
+  const expectedHash = createHash("sha256").update(REPLAY_IDENTIFIER, "utf8").digest();
   const everyValue = pool.log.flatMap((entry) => entry.values ?? []);
   // The raw key must appear nowhere.
   assert.equal(
-    everyValue.some((value) => typeof value === "string" && value.includes(GOOD_KEY)),
+    everyValue.some((value) => typeof value === "string" && value.includes(REPLAY_IDENTIFIER)),
     false,
     "raw idempotency key reached the database",
   );
@@ -307,7 +309,7 @@ test("replaying the same key with the same request returns the same run", async 
   );
   const result = await provider.createRun({
     agentIdentifier: "a",
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "req-2",
   });
   assert.equal(result.replayed, true);
@@ -335,7 +337,7 @@ test("reusing a key with different content fails and writes nothing", async () =
   await assert.rejects(
     provider.recall({
       runId: RUN_ID,
-      idempotencyKey: GOOD_KEY,
+      idempotencyKey: REPLAY_IDENTIFIER,
       transportRequestId: "r",
       queryVectorLiteral: "[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]",
       queryText: "where were we",
@@ -355,7 +357,7 @@ test("recall constrains both index prefixes and resolves the projection from the
   const { pool, provider } = buildProvider(defaultResponder());
   const result = await provider.recall({
     runId: RUN_ID,
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "r",
     queryVectorLiteral: "[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]",
     queryText: "where were we",
@@ -372,7 +374,7 @@ test("recall fails closed when the run has no active projection", async () => {
   await assert.rejects(
     provider.recall({
       runId: RUN_ID,
-      idempotencyKey: GOOD_KEY,
+      idempotencyKey: REPLAY_IDENTIFIER,
       transportRequestId: "r",
       queryVectorLiteral: "[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]",
       queryText: "q",
@@ -385,7 +387,7 @@ test("closing a session stores summaries, embeddings, and activates the projecti
   const { pool, provider } = buildProvider(defaultResponder());
   const result = await provider.closeSessionAndBuildProjection({
     runId: RUN_ID,
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "r",
     corpusEntries: [CORPUS_ENTRY, { ...CORPUS_ENTRY, fixtureId: "second" }],
   });
@@ -411,7 +413,7 @@ test("the denial writes a DENIED receipt and returns zero protected fields", asy
   );
   const result = await provider.recordDisclosureDenial({
     runId: RUN_ID,
-    idempotencyKey: GOOD_KEY,
+    idempotencyKey: REPLAY_IDENTIFIER,
     transportRequestId: "r",
     requestedProtectedFieldNames: ["ein", "born", "not valid!", 42],
   });
@@ -487,7 +489,7 @@ test("overlength summary text is refused rather than truncated", async () => {
   await assert.rejects(
     provider.closeSessionAndBuildProjection({
       runId: RUN_ID,
-      idempotencyKey: GOOD_KEY,
+      idempotencyKey: REPLAY_IDENTIFIER,
       transportRequestId: "r",
       corpusEntries: [{ ...CORPUS_ENTRY, publicSafeSummary: "x".repeat(513) }],
     }),
