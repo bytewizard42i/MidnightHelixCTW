@@ -39,7 +39,10 @@ export const RESPONSE_SCHEMA_VERSION = "mhelixctw/api/v1";
 export const PROVIDER_STATES = Object.freeze([
   Object.freeze({
     id: "aws",
-    label: "AWS Lambda and API Gateway",
+    // Human-facing alias. The machine identifier stays `aws` because the
+    // typed protocol contract and the browser both key on it; only the label
+    // judges read on screen uses the product name.
+    label: "Helix Runtime Bridge (AWS Lambda and API Gateway)",
     targetMode: "LIVE_TESTWIRED",
     evidence: "SOURCE_ONLY",
     connection: "NOT_CONNECTED",
