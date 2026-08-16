@@ -93,10 +93,13 @@ remains `TESTWIRED`; each capability is promoted separately only after its requi
 
 The 2026-08-15 foundation checkpoint completed the isolated database, schema,
 migration, table ownership, role separation, negative permission test, and
-canonical marker and migration-ledger activation. The reviewed Lambda bootstrap
-now exists in source, but deployment and public verification, fixture seed, and
-the vector path remain incomplete. The currently deployed application provider
-therefore remains `NOT_CONNECTED`.
+canonical marker and migration-ledger activation. On 2026-08-16 the reviewed
+read-only Lambda bootstrap was deployed at release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4` and the public bounded
+environment-marker probe was verified (`REALDEAL_TEST` / `CONNECTED` — see
+[the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md)).
+The fixture seed and the vector path remain incomplete, so persistent memory
+stays unproven and the overall application remains `NOT_CONNECTED`.
 
 1. Select the Basic cluster intended for the hackathon.
 2. Use the dedicated `mhelix_testwired` database rather than sharing the public schema with unrelated

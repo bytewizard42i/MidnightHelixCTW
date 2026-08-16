@@ -27,17 +27,23 @@ and their Git histories remain untouched.
 > tables are owned by `mhelix_migrator`. The `mhelix_migrator` and
 > `mhelix_runtime` users do not inherit `admin`. The runtime user has database
 > `CONNECT`, schema `USAGE`, and `SELECT` only on the environment-marker table;
-> `SELECT` on `mhelix_runs` is denied. The probe remains `SOURCE ONLY`, and the
-> deployed AWS (Amazon Web Services) Lambda transport has no database bootstrap.
+> `SELECT` on `mhelix_runs` is denied. The deployed AWS (Amazon Web Services)
+> Lambda transport now carries the reviewed read-only database bootstrap:
+> release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` reached `UPDATE_COMPLETE`
+> and the public bounded environment-marker probe reads back `REALDEAL_TEST`
+> and `CONNECTED` through `/api/v1/status`. That probe proves the connection,
+> runtime identity, and reviewed TestWired marker only — it neither proves nor
+> enables memory persistence or vector retrieval.
 > The canonical marker source commit is `48e85b4`, with digest
 > `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`,
 > and source commit `7a29f22` contains the reviewed atomic activation. An
 > authenticated `mhelix_migrator` session applied that activation. Sanitized
 > post-commit readback showed exactly one canonical environment-marker row, with
 > all 8 comparisons true across the entire marker table, and exactly one
-> migration-001 ledger row, with all 6 comparisons true. This activation does
-> not connect the deployed Lambda or promote the CockroachDB application
-> provider, which remains `NOT_CONNECTED`. Persistent memory, vector retrieval,
+> migration-001 ledger row, with all 6 comparisons true. The live probe does
+> not promote the CockroachDB application memory capability: the overall
+> application remains `SOURCE_ONLY` and `NOT_CONNECTED`, and
+> `readyForMutations` remains `false`. Persistent memory, vector retrieval,
 > and Managed MCP (Model Context Protocol) remain unproven and planned. Bedrock
 > and Midnight also remain disconnected. DIDz, AgenticDID, and RWAz retain
 > synthetic fixtures, while their callable providers remain disconnected.
@@ -67,7 +73,8 @@ No component may silently fall back to a mock.
 
 | Component | Submission target | Current repository state |
 | --- | --- | --- |
-| CockroachDB database and schema foundation | Foundation evidence | `LIVE TESTWIRED` foundation only; migration 001 applied, 10 tables plus exactly one canonical marker row and one migration-001 ledger row verified, least-privilege runtime denial verified, and the application provider remains `NOT_CONNECTED` |
+| CockroachDB database and schema foundation | Foundation evidence | `LIVE TESTWIRED` foundation; migration 001 applied, 10 tables plus exactly one canonical marker row and one migration-001 ledger row verified, and least-privilege runtime denial verified |
+| CockroachDB Cloud connection and environment probe | `REALDEAL_TEST` | `REALDEAL_TEST` and `CONNECTED`; the deployed Lambda's bounded read-only probe publicly verifies the connection, runtime identity, and TestWired marker. It does not prove memory, vectors, or mutations, and the overall application remains `NOT_CONNECTED` |
 | CockroachDB persistent memory and distributed vectors | `REALDEAL_TEST` | `PLANNED`; no live persistence or vector retrieval is proven |
 | CockroachDB Managed MCP (Model Context Protocol) verification | `REALDEAL_TEST` | `PLANNED` and `NOT_CONNECTED` |
 | AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda transport | `REALDEAL_TEST` | Public transport live; downstream providers disconnected |

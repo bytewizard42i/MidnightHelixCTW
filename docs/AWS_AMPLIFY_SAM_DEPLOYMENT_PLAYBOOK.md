@@ -22,9 +22,14 @@ for one another.
 
 For the Phase 1 shell, successful AWS (Amazon Web Services) Lambda and
 Amazon API (Application Programming Interface) Gateway execution
-promotes only the AWS (Amazon Web Services) transport boundary. The global
-deployment evidence remains `SOURCE_ONLY`, mutations remain fail-closed, and
-CockroachDB, Bedrock, Midnight, MCP (Managed Model Context Protocol), `DIDz`
+promotes only the AWS (Amazon Web Services) transport boundary. As of
+2026-08-16 the deployed release also carries the reviewed read-only
+CockroachDB bootstrap, so the bounded environment-marker probe row is
+additionally `REALDEAL_TEST` and `CONNECTED` (see
+[the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md)).
+The global deployment evidence remains `SOURCE_ONLY`, mutations remain
+fail-closed, and CockroachDB application memory, Bedrock, Midnight,
+MCP (Managed Model Context Protocol), `DIDz`
 (decentralized identity fixture provider), `AgenticDID` (agentic decentralized
 identity fixture provider), and `RWAz` (real-world asset fixture provider) remain
 `NOT_CONNECTED` until each has separate evidence.
@@ -75,6 +80,12 @@ checkpoint on 2026-08-15:
 | Generated application programming interface | <https://iyoshkil91.execute-api.us-east-1.amazonaws.com> |
 | Application stack | `mhelixctw-testwired`, `CREATE_COMPLETE` |
 | Amazon Web Services region | `us-east-1` |
+
+Those values are the dated 2026-08-15 checkpoint and are preserved as history.
+Current state as of 2026-08-16: the same stack is `UPDATE_COMPLETE` at release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4` with handler `src/lambda.handler`
+and the live read-only CockroachDB environment probe
+([evidence record](archive/aws/2026-08-16-live-probe-deployment.md)).
 
 At this checkpoint, the Amplify `main` release was rebuilt successfully with the
 public base-address build variable, `VITE_API_BASE_URL`. The generated frontend,

@@ -31,9 +31,12 @@ Secrets Manager resource, and Bedrock permissions were not copied. This stack
 uses the fictional Morrow property scenario and creates no provider credential
 container. Reviewed source adds only `secretsmanager:GetSecretValue` for the
 exact existing-secret ARN (Amazon Resource Name), alongside writes to its own
-log stream. It has not been deployed or publicly probed, so the current
-CockroachDB application provider truth remains `NOT_CONNECTED` and
-`SOURCE_ONLY`.
+log stream. That source is deployed at release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4`, and the public bounded read-only
+environment probe is verified (`REALDEAL_TEST` / `CONNECTED`). The probe
+covers the connection, runtime identity, and reviewed marker only; persistent
+memory, vectors, and mutations remain unavailable, and the overall application
+truth remains `NOT_CONNECTED` and `SOURCE_ONLY`.
 
 The original HelixCTW files remain untouched and authoritative for their own
 history. This repository is authoritative for the new standalone API shell.
