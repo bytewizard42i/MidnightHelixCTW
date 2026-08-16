@@ -1,3 +1,34 @@
 # Keep the maintained default rules. Add an allowlist only after manual review.
 [extend]
 useDefault = true
+
+# ---------------------------------------------------------------------------
+# Manually reviewed false positive, 2026-08-16.
+#
+# The default `generic-api-key` rule matched this line in
+# `apps/api/test/vector-memory-provider.test.mjs`:
+#
+#     const GOOD_KEY = "penny-test-idempotency-key-0001"
+#
+# Review outcome: NOT a credential. It is a fabricated idempotency-key fixture
+# authored for the vector-memory provider tests. It authenticates nothing,
+# exists in no external system, and grants no access. The rule fired on the
+# shape of the assignment (an identifier containing KEY, followed by a
+# hyphenated token) rather than on any real secret.
+#
+# The fixture has since been renamed to REPLAY_IDENTIFIER so new code does not
+# resemble a credential assignment. This entry remains necessary because the
+# original literal is permanently present in pushed history, and the scan reads
+# patch content including deleted lines. Rewriting that history would require a
+# force-push, which is a standing prohibition in this repository, and is a far
+# worse remedy than an exact-match allowlist for a string that is not secret.
+#
+# Scope is deliberately minimal: one exact literal. No rule is disabled, no
+# path is exempted, and no pattern is broadened, so every other file and every
+# other candidate secret is still scanned normally.
+# ---------------------------------------------------------------------------
+[allowlist]
+description = "Reviewed non-secret test fixture retained in git history"
+regexes = [
+  '''penny-test-idempotency-key-0001''',
+]
