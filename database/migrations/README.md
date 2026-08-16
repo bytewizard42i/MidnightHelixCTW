@@ -181,16 +181,37 @@ been applied.** No vector row exists, no grant has been executed, no capability
 row has been inserted, and no vector query or query plan has been observed.
 Committing it proves nothing about the live database.
 
+Unverified and explicitly not claimed by this slice: vector retrieval,
+vector-index use, capability activation, Managed MCP (Model Context Protocol)
+access, and hosted execution of any of it.
+
 ### What it adds
 
 | Object | Purpose |
 | --- | --- |
-| `mhelix_runtime_capabilities` | Release-bound runtime capability marker. Its primary key is `(capability_id, release_commit)`, so a capability is always bound to one exact 40-character release commit and a stale deployment cannot claim a newer capability. A `CHECK` keeps `public_mutations_enabled` false, so public mutations remain impossible at the schema level. |
+| `mhelix_runtime_capabilities` | Release-bound runtime capability marker keyed `(capability_id, release_commit)`, so a capability is always bound to one exact 40-character release commit and a stale deployment cannot claim a newer capability. |
 | `mhelix_run_active_projections` | Run-specific active projection binding. Migration 001 pins one active projection per case namespace; recall additionally pins one per independent judge run, so two runs in one case cannot silently read each other's generation. |
 | `mhelix_memory_summary_embeddings` | Privacy-safe summary embeddings: reference columns, one `VECTOR(8)` embedding, a fixed model identifier, a 32-byte embedding commitment, and audit fields. |
-| `mhelix_recall_result_items` | Immutable ranked recall-result items bound to the action receipt that produced them, so a receipt can reproduce the exact stored evidence references. |
-| `uq_mhelix_memory_summaries_session_summary` | Additive unique index on the existing summaries table. It adds no column and changes no existing definition; it exists so the embedding table can carry a real composite foreign key proving a summary belongs to its session. |
-| `transport_request_id` | Additive nullable column on `mhelix_action_receipts`, reusing the exact request-identifier pattern already validated in `apps/api/src/handler.js`. It is nullable because migration 001 receipts predate it, and a fabricated default would be dishonest evidence. |
+| `mhelix_recall_result_items` | Immutable ranked recall-result items bound to the receipt that produced them, carrying the run and the operation so a result can never attach to another run's receipt or to a non-recall operation. |
+| `uq_mhelix_memory_summaries_session_summary` | Additive unique index on the existing summaries table, enabling a real composite foreign key for the session-to-summary boundary. |
+| `uq_mhelix_action_receipts_run_receipt_operation` | Additive unique index on the existing action-receipts table, enabling the composite `(run_id, action_receipt_id, operation)` foreign key described above. |
+| `transport_request_id` | Additive nullable column on `mhelix_action_receipts`, reusing the exact request-identifier pattern already validated in `apps/api/src/handler.js`. Nullable because migration 001 receipts predate it; a fabricated default would be dishonest evidence. |
+
+No separate receipt-rank index is declared: the
+`UNIQUE (action_receipt_id, result_rank)` constraint already creates one, and a
+duplicate index would be dead weight the verifier now explicitly rejects.
+
+Cross-session recall is deliberately permitted. Session B must be able to read
+a summary written by Session A, so the schema does **not** require the recalled
+summary and the recall receipt to share a session.
+
+### What `public_mutations_enabled = false` does and does not do
+
+It prevents a **capability row from claiming mutation readiness**. That is its
+entire scope. It does **not** independently prevent every table mutation, and
+it is not a substitute for the exact-statement application executor and the
+reviewed database mutation boundary. **Both are still required before any
+public write.**
 
 ### The privacy rule for the vector table
 
@@ -202,12 +223,12 @@ encryption keys, Filecoin payloads, or protected document bytes. There is
 deliberately no free-text content column, and the source-contract test rejects
 one if it is ever added.
 
-The fixed model identifier is `mhelixctw-synthetic-embedding-v1`, a
-deterministic synthetic embedding for this proof of concept. It is deliberately
-**not** an AWS (Amazon Web Services) Bedrock Titan identifier: Titan does not
-emit eight-dimensional vectors, so naming it here would be a false claim. Real
-Titan embeddings would require their own reviewed migration to change the
-declared dimension.
+`mhelixctw-synthetic-embedding-v1` is a **reserved identifier for a planned
+deterministic generator. That generator does not exist yet**; no code in this
+repository produces an embedding under that name. It is deliberately not an
+AWS (Amazon Web Services) Bedrock Titan identifier, because Amazon Titan Text
+Embeddings V2 produces 256, 512, or 1,024 dimensions, never eight, so naming
+Titan here would be false.
 
 ### Apply-time prerequisites that this source does not perform
 
@@ -218,49 +239,97 @@ declared dimension.
    setting is a separate explicitly authorized live operation. If the setting
    is disabled, the embedding-table statement fails, which is the intended
    fail-closed behavior rather than silently creating an unindexed table.
-2. **Ledger row.** `database/activation/002_testwired_vector_memory_activation.sql`
-   inserts exactly one migration-ledger row in one plain-`INSERT` transaction,
-   with no `UPSERT` and no `ON CONFLICT`. A conflict is a fail-closed review
-   event.
-3. **Grants.** `database/activation/002_testwired_vector_memory_grants.sql`
-   grants table-level `SELECT`, `INSERT`, and narrow `UPDATE` only, with no
-   grant option and no wildcard target.
-4. **Read-back.** `database/activation/verify_vector_memory_activation.sql`
-   returns booleans only, so an evidence transcript never contains a stored
-   embedding, commitment, or summary.
+2. **Ledger row.** `002_testwired_vector_memory_activation.sql` inserts exactly
+   one migration-ledger row in one plain-`INSERT` transaction, with no `UPSERT`
+   and no `ON CONFLICT`. A conflict is a fail-closed review event.
+3. **Grants.** `002_testwired_vector_memory_grants.sql` grants table-level
+   `SELECT` only. See the least-privilege section below.
+4. **Read-back.** `verify_vector_memory_activation.sql` returns booleans only,
+   so an evidence transcript never contains a stored embedding, commitment, or
+   summary.
 
-### Why no capability row is committed
+### The live backfill to schedule and observe
 
-The runtime capability marker is release-bound: inserting it requires the exact
-40-character release commit being activated and that release's 32-byte evidence
-commitment. **A committed file cannot contain the hash of the commit that will
-contain it**, so any release commit written into committed source would
-necessarily be fabricated or stale. The authorized operator therefore inserts
-the capability row at activation time, from this reviewed template, replacing
-both angle-bracket placeholders with real values. The placeholders below are
-documentation and are intentionally not valid SQL (Structured Query Language)
-literals, so this block can never be pasted unmodified:
+The vector index is created on a **new, empty** table, so it has nothing to
+backfill. The statements that touch existing data are the two additive unique
+indexes on the already-populated migration-001 tables
+(`mhelix_memory_summaries` and `mhelix_action_receipts`). CockroachDB keeps
+tables online during index creation, but a backfill consumes resources and can
+temporarily raise latency, so before applying migration 002 an operator should
+inspect the existing tables, apply during a quiet period, monitor the
+schema-change job, and verify the resulting indexes
+([online schema changes](https://www.cockroachlabs.com/docs/v26.2/online-schema-changes)).
 
-```sql
-BEGIN;
+### Least privilege in this slice: `SELECT` only
 
-INSERT INTO mhelix_testwired.mhelix_runtime_capabilities
-  (capability_id, marker_id, release_commit, capability_state,
-   capability_version, evidence_commitment)
-VALUES
-  ('vector_memory_recall',
-   'mhelixctw-testwired-environment',
-   <RELEASE_COMMIT_40_LOWERCASE_HEX>,
-   'SOURCE_ONLY',
-   1,
-   decode(<EVIDENCE_COMMITMENT_64_LOWERCASE_HEX>, 'hex'));
+The grant packet gives the runtime role database `CONNECT`, schema `USAGE`, and
+table-level `SELECT` on exactly the tables the read path needs. Nothing else.
 
-COMMIT;
+- **No `UPDATE`.** The lifecycle-transition grants (closing a memory session,
+  advancing a projection generation, completing an action receipt) are
+  **deferred** until the exact-statement application executor and the database
+  mutation boundary are reviewed together. A table-wide `UPDATE` grant is far
+  broader than the three specific transitions the flow needs.
+- **No `INSERT`.** No runtime implementation exists yet, so no write path can
+  justify an `INSERT` grant today.
+- No `DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`,
+  ownership, cluster-setting, database-wide, or wildcard privilege, and no
+  `WITH GRANT OPTION` anywhere.
+
+The grant script is **resumable and idempotent, not atomic**: CockroachDB can
+auto-commit a `GRANT` because it is a schema change, so the script is
+deliberately written without a surrounding transaction and may simply be re-run
+if interrupted. Authoritative completion evidence is the exact two-way readback,
+never the apparent success of the script.
+
+**Recorded correction gate:** the existing `managed-mcp` identity inherits
+`admin`. While that inheritance stands, that identity must not be described as
+least-privileged. Nothing in migration 002 or its grants changes it; correcting
+it is a separate explicitly authorized live operation.
+
+### Capability activation and its separate readback
+
+Two additional reviewed sources close the capability loop. Neither has been
+executed.
+
+- `activate_vector_memory_capability.sql` takes exactly **one** bound argument,
+  `$1`, the expected 40-character lowercase release commit. It reads the
+  canonical marker and the applied migration-002 ledger row from the database,
+  refuses missing, duplicate, stale, or ambiguous source rows, builds the fixed
+  domain-separated preimage below, and **derives** the SHA-256 (Secure Hash
+  Algorithm 256-bit) commitment itself with `digest(..., 'sha256')`. A caller
+  cannot supply a commitment. It uses one ordinary `INSERT` with no `UPSERT`
+  and no `ON CONFLICT`. The operator must confirm the statement reports exactly
+  one inserted row; zero rows means a precondition failed and is a review
+  event.
+- `verify_vector_memory_capability.sql` takes the same single argument,
+  **recomputes** the commitment, and proves exactly one matching row with the
+  canonical marker, migration, vector settings, model identifier, and
+  `public_mutations_enabled = false`. It pins `release_commit = $1` throughout,
+  so it can never certify a vague latest row, and it fails if any other release
+  claims the capability.
+
+The preimage is these eight lines, in this order, joined with LF (Line Feed),
+encoded as UTF-8 (Unicode Transformation Format, 8-bit), with no BOM (Byte
+Order Mark) and no trailing LF (Line Feed):
+
+```text
+domain=mhelixctw-vector-memory-capability-v1
+marker_id=<canonical marker identifier>
+release_commit=<40-character lowercase commit>
+migration_id=002_testwired_vector_memory
+migration_checksum=<recorded migration checksum>
+vector_dimension=8
+distance_metric=cosine
+embedding_model=mhelixctw-synthetic-embedding-v1
 ```
 
-`capability_state` must never be promoted past the evidence that exists.
-`LIVE_TESTWIRED` requires a real applied migration, real grants, a real stored
-vector, a real recall, and a sanitized transcript.
+The preflight verifier and the post-activation verifier are deliberately
+separate jobs: the preflight one requires the capability table to be **empty**,
+and the post-activation one verifies the **installed** row. Never merge them.
+
+`capability_state` is fixed at `SOURCE_ONLY` by the helper. Promotion past the
+evidence that exists is a separate reviewed decision.
 
 ### The intended recall query
 
@@ -280,25 +349,15 @@ SELECT memory_summary_id,
 A vector index is only usable when every prefix column is constrained to an
 exact value, which this shape satisfies
 ([official documentation](https://www.cockroachlabs.com/docs/v26.2/vector-indexes#define-prefix-columns)).
-**No index-use claim is made.** Whether the optimizer actually uses
-`vec_mhelix_summary_embeddings_run_projection` is proven only by a live
+**No index-use claim is made.** Whether the optimizer selects
+`vec_mhelix_summary_embeddings_run_projection` can only be established by a live
 `EXPLAIN` showing a vector search node with prefix spans. Until that plan
 evidence exists, the index is declared but unproven.
 
-### Least privilege and one recorded privilege gap
-
-The reviewed grants give the runtime role table-level `SELECT` and `INSERT`
-where the five-step flow needs them, and `UPDATE` on exactly three tables:
-memory sessions, projection generations, and action receipts. The runtime role
-gets **no `UPDATE` on runs**, no privilege on the migration ledger, and no
-`DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`,
-cluster-setting, database-wide, or wildcard privilege. Ranked recall-result
-items are immutable by privilege: `INSERT` and `SELECT` only.
-
-**Recorded correction gate:** the existing `managed-mcp` identity inherits
-`admin`. While that inheritance stands, that identity must not be described as
-least-privileged. Nothing in migration 002 or its grants changes it; correcting
-it is a separate explicitly authorized live operation with its own evidence.
+**Open design requirement for the future runtime:** the recall path must
+resolve the active projection generation **unambiguously**, by reading
+`mhelix_run_active_projections` for the run. A historical generation must never
+become active merely because a caller supplied its identifier.
 
 ### Verifying the source contract
 
@@ -308,10 +367,20 @@ npm run verify
 ```
 
 `apps/api/test/vector-memory-migration-source.test.mjs` recomputes the
-migration's SHA-256 (Secure Hash Algorithm 256-bit) digest and its top-level
-statement count from the migration file itself and fails if the activation
-file drifts by one byte. It also rejects unqualified objects, destructive
-statements, a missing vector dimension or wrong operator class, weak cross-run
-or cross-projection keys, unsafe raw-content columns, broad runtime privileges,
-runtime `UPDATE` on runs, non-idempotent receipt or recall-result constraints,
-and any overwrite behavior in the activation sources.
+migration's SHA-256 digest and top-level statement count from the migration
+file itself and fails if the activation, verification, or capability sources
+quote a different checksum. Its guards are written as violation collectors and
+are exercised in both directions: once against the committed source, which must
+report zero violations, and once against deliberately broken variants, which
+must report the specific violation. Those broken variants are committed in the
+test file, so the negative evidence is reproducible rather than asserted.
+
+The rejected classes include cross-run and wrong-operation receipt
+relationships, a missing composite receipt relationship, a wrong vector
+dimension, a wrong vector-index prefix, order, or operator class, a missing
+foreign key, unique constraint, check constraint, or transport check, missing,
+extra, grantable, or write runtime privileges, an unchecked owner or inherited
+role, a caller-supplied evidence commitment, an unpinned or unverified
+post-activation capability check, the redundant receipt index, the vacuous
+`coalesce(..., true)` verification pattern, and overstated activation,
+retrieval, or least-privilege wording.

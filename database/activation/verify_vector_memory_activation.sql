@@ -2,93 +2,250 @@
 -- MidnightHelixCTW read-back verification for migration and activation 002.
 --
 -- REVIEWED SOURCE ONLY. SOURCE_ONLY status. These are read-only queries for
--- independent verification AFTER migration 002 and its activation have been
--- applied. Nothing here has been executed.
+-- independent verification AFTER migration 002, its ledger activation, and its
+-- grant packet have been applied. Nothing here has been executed.
 --
--- They follow the boolean-comparison pattern of
--- `verify_marker_activation.sql`: expected values go in as comparands, only
--- booleans come out, and no stored byte, summary, embedding, or protected
--- value is ever echoed. That keeps an evidence transcript safe to share.
+-- FAIL-CLOSED DESIGN. Every boolean is an explicit count comparison evaluated
+-- as a scalar subquery, so each query always returns exactly one row and a
+-- MISSING object can never read as success. There is deliberately no
+-- `coalesce(..., true)` anywhere in this file: that pattern turns "no rows
+-- examined" into "true", which is precisely the vacuous result this
+-- verification must never produce.
 --
 -- Expected results: exactly one row per query, with every boolean column true.
--- Zero rows, extra rows, or any false boolean is a fail-closed review event.
+-- Any false boolean is a fail-closed review event.
 --
 -- Every query is read-only. There is no INSERT, UPDATE, DELETE, TRUNCATE,
 -- DROP, ALTER, GRANT, or REVOKE in this file.
+--
+-- This file verifies the SCHEMA and the GRANT PACKET. It deliberately requires
+-- the capability table to be EMPTY: capability installation is a later,
+-- separate step verified by `verify_vector_memory_capability.sql`.
 
--- 1. Migration ledger row for 002: exact provenance, checksum, and statement
--- count. Booleans only.
-SELECT count(*) = 1 AS exactly_one_ledger_row,
-       coalesce(bool_and(
-         migration_id = '002_testwired_vector_memory'
-       ), false) AS migration_id_matches,
-       coalesce(bool_and(
-         source_file_name =
-           'database/migrations/002_testwired_vector_memory.sql'
-       ), false) AS source_file_name_matches,
-       coalesce(bool_and(statement_count = 7), false)
-         AS statement_count_matches,
-       coalesce(bool_and(
-         source_checksum =
-           'f166b9ffd2e1e77aa736eb1398650cd282dee97444087007866a4c5adff43374'
-       ), false) AS checksum_matches,
-       coalesce(bool_and(applied_at IS NOT NULL), false)
-         AS applied_at_present
-  FROM mhelix_testwired.mhelix_schema_migrations
- WHERE migration_id = '002_testwired_vector_memory';
+-- 1. Migration ledger row for 002. A single exact-match count means a wrong
+-- checksum, wrong file name, wrong statement count, missing row, or duplicate
+-- row all fail.
+SELECT (
+         SELECT count(*)
+           FROM mhelix_testwired.mhelix_schema_migrations
+          WHERE migration_id = '002_testwired_vector_memory'
+            AND source_file_name =
+                  'database/migrations/002_testwired_vector_memory.sql'
+            AND source_checksum =
+                  'caf95f61b5c43755de94d24e7980966d423da3a5ae9c2e4980080832d99ec20b'
+            AND statement_count = 7
+            AND applied_at IS NOT NULL
+       ) = 1 AS ledger_row_is_exact;
 
--- 2. All four new tables exist in the dedicated schema. Booleans only.
-SELECT count(*) = 4 AS exactly_four_new_tables,
-       coalesce(bool_and(table_schema = 'mhelix_testwired'), false)
-         AS all_tables_schema_qualified
-  FROM information_schema.tables
- WHERE table_schema = 'mhelix_testwired'
-   AND table_name IN (
-     'mhelix_runtime_capabilities',
-     'mhelix_run_active_projections',
-     'mhelix_memory_summary_embeddings',
-     'mhelix_recall_result_items'
-   );
+-- 2. All four new tables exist in the dedicated schema, and the migration-001
+-- tables they depend on are still present.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.tables
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name IN (
+              'mhelix_runtime_capabilities',
+              'mhelix_run_active_projections',
+              'mhelix_memory_summary_embeddings',
+              'mhelix_recall_result_items'
+            )
+       ) = 4 AS four_new_tables_present,
+       (
+         SELECT count(*)
+           FROM information_schema.tables
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name IN (
+              'mhelix_environment_markers',
+              'mhelix_memory_sessions',
+              'mhelix_memory_summaries',
+              'mhelix_projection_generations',
+              'mhelix_action_receipts',
+              'mhelix_runs'
+            )
+       ) = 6 AS depended_on_tables_present;
 
--- 3. The embedding column exists, is NOT NULL, and the privacy rule holds:
--- the embedding table carries no free-text content column. The exact declared
--- dimension VECTOR(8) is confirmed during live review with
--- `SHOW CREATE TABLE mhelix_testwired.mhelix_memory_summary_embeddings`,
--- which prints the declared type verbatim.
-SELECT coalesce(bool_or(
-         column_name = 'embedding' AND is_nullable = 'NO'
-       ), false) AS embedding_column_present_and_not_null,
-       coalesce(bool_or(
-         column_name = 'embedding_commitment' AND is_nullable = 'NO'
-       ), false) AS embedding_commitment_present,
-       coalesce(bool_or(
-         column_name = 'embedding_model_id' AND is_nullable = 'NO'
-       ), false) AS embedding_model_id_present,
-       count(*) FILTER (
-         WHERE column_name IN (
-           'public_safe_summary',
-           'summary_text',
-           'content',
-           'raw_content',
-           'document_bytes'
-         )
-       ) = 0 AS no_raw_content_column
-  FROM information_schema.columns
- WHERE table_schema = 'mhelix_testwired'
-   AND table_name = 'mhelix_memory_summary_embeddings';
+-- 3. The embedding column is EXACTLY VECTOR(8), proven with the documented
+-- `information_schema.columns.crdb_sql_type`. An impostor table carrying the
+-- expected name but a different dimension or type fails here.
+--
+-- If a future CockroachDB release renders this type string differently, this
+-- check FAILS CLOSED and must be re-reviewed against the documentation. Do not
+-- loosen it to a LIKE pattern to make it pass.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.columns
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summary_embeddings'
+            AND column_name = 'embedding'
+            AND crdb_sql_type = 'VECTOR(8)'
+            AND is_nullable = 'NO'
+       ) = 1 AS embedding_is_exactly_vector_8,
+       (
+         SELECT count(*)
+           FROM information_schema.columns
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summary_embeddings'
+            AND column_name = 'embedding_commitment'
+            AND crdb_sql_type = 'BYTES'
+            AND is_nullable = 'NO'
+       ) = 1 AS embedding_commitment_is_bytes,
+       -- The vector table must carry no free-text content column. Its only
+       -- STRING column is the fixed model identifier.
+       (
+         SELECT count(*)
+           FROM information_schema.columns
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summary_embeddings'
+            AND crdb_sql_type LIKE 'STRING%'
+            AND column_name <> 'embedding_model_id'
+       ) = 0 AS vector_table_has_no_free_text_column;
 
--- 4. The additive transport request identifier exists on action receipts and
--- remains nullable, because migration 001 receipts predate it.
-SELECT count(*) = 1 AS transport_request_id_column_present,
-       coalesce(bool_and(is_nullable = 'YES'), false)
-         AS transport_request_id_is_nullable
-  FROM information_schema.columns
- WHERE table_schema = 'mhelix_testwired'
-   AND table_name = 'mhelix_action_receipts'
-   AND column_name = 'transport_request_id';
+-- 4. The vector index carries the expected prefix columns in the expected
+-- ORDER, and is built for the cosine operator class. Ordinal positions come
+-- from the documented `information_schema.statistics.seq_in_index`; the
+-- operator class comes from the table's own CREATE statement, read through the
+-- documented CockroachDB statement-source table expression.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.statistics
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summary_embeddings'
+            AND index_name = 'vec_mhelix_summary_embeddings_run_projection'
+            AND (
+              (seq_in_index = 1 AND column_name = 'run_id')
+              OR (seq_in_index = 2 AND column_name = 'projection_generation_id')
+              OR (seq_in_index = 3 AND column_name = 'embedding')
+            )
+       ) = 3 AS vector_index_prefix_columns_in_order,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_memory_summary_embeddings]
+          WHERE create_statement LIKE '%vector_cosine_ops%'
+       ) = 1 AS vector_index_uses_cosine_opclass,
+       (
+         SELECT count(*)
+           FROM [SHOW CREATE TABLE
+                 mhelix_testwired.mhelix_memory_summary_embeddings]
+          WHERE create_statement LIKE '%vector_l2_ops%'
+             OR create_statement LIKE '%vector_ip_ops%'
+       ) = 0 AS vector_index_uses_no_other_opclass;
 
--- 5. Fail-closed emptiness. Activation must not find pre-existing rows in the
--- new tables. Any nonzero count is a review event.
+-- 5. The two additive unique indexes on EXISTING migration-001 tables exist
+-- with exactly the expected columns in the expected order. These are what make
+-- the composite foreign keys possible.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.statistics
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summaries'
+            AND index_name = 'uq_mhelix_memory_summaries_session_summary'
+            AND non_unique = 'NO'
+            AND (
+              (seq_in_index = 1 AND column_name = 'session_id')
+              OR (seq_in_index = 2 AND column_name = 'memory_summary_id')
+            )
+       ) = 2 AS summaries_composite_unique_index_present,
+       (
+         SELECT count(*)
+           FROM information_schema.statistics
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_action_receipts'
+            AND index_name =
+                  'uq_mhelix_action_receipts_run_receipt_operation'
+            AND non_unique = 'NO'
+            AND (
+              (seq_in_index = 1 AND column_name = 'run_id')
+              OR (seq_in_index = 2 AND column_name = 'action_receipt_id')
+              OR (seq_in_index = 3 AND column_name = 'operation')
+            )
+       ) = 3 AS receipt_identity_unique_index_present,
+       -- The redundant receipt-rank index must NOT exist: the uniqueness
+       -- constraint already provides that index.
+       (
+         SELECT count(*)
+           FROM information_schema.statistics
+          WHERE table_schema = 'mhelix_testwired'
+            AND index_name = 'idx_mhelix_recall_result_items_receipt'
+       ) = 0 AS no_redundant_receipt_rank_index;
+
+-- 6. Every required constraint exists on the new tables. Counting by type
+-- means a dropped or never-created foreign key, unique constraint, or check
+-- constraint fails.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.table_constraints
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_memory_summary_embeddings'
+            AND constraint_type = 'FOREIGN KEY'
+       ) = 4 AS embeddings_have_four_foreign_keys,
+       (
+         SELECT count(*)
+           FROM information_schema.table_constraints
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_recall_result_items'
+            AND constraint_type = 'FOREIGN KEY'
+       ) = 2 AS recall_results_have_two_foreign_keys,
+       (
+         SELECT count(*)
+           FROM information_schema.table_constraints
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_run_active_projections'
+            AND constraint_type = 'FOREIGN KEY'
+       ) = 2 AS run_bindings_have_two_foreign_keys,
+       (
+         SELECT count(*)
+           FROM information_schema.table_constraints
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_runtime_capabilities'
+            AND constraint_type = 'FOREIGN KEY'
+       ) = 1 AS capabilities_reference_the_marker;
+
+-- 7. The recall-result run and operation binding, the mutation-claim guard,
+-- and the transport-identifier pattern all exist as CHECK constraints with the
+-- expected clauses.
+SELECT (
+         SELECT count(*)
+           FROM information_schema.check_constraints AS cc
+           JOIN information_schema.table_constraints AS tc
+             ON tc.constraint_name = cc.constraint_name
+            AND tc.constraint_schema = cc.constraint_schema
+          WHERE tc.table_schema = 'mhelix_testwired'
+            AND tc.table_name = 'mhelix_recall_result_items'
+            AND cc.check_clause LIKE '%recall%'
+       ) >= 1 AS recall_operation_check_present,
+       (
+         SELECT count(*)
+           FROM information_schema.check_constraints AS cc
+           JOIN information_schema.table_constraints AS tc
+             ON tc.constraint_name = cc.constraint_name
+            AND tc.constraint_schema = cc.constraint_schema
+          WHERE tc.table_schema = 'mhelix_testwired'
+            AND tc.table_name = 'mhelix_runtime_capabilities'
+            AND cc.check_clause LIKE '%public_mutations_enabled%'
+       ) >= 1 AS mutation_claim_guard_present,
+       (
+         SELECT count(*)
+           FROM information_schema.check_constraints AS cc
+           JOIN information_schema.table_constraints AS tc
+             ON tc.constraint_name = cc.constraint_name
+            AND tc.constraint_schema = cc.constraint_schema
+          WHERE tc.table_schema = 'mhelix_testwired'
+            AND tc.table_name = 'mhelix_action_receipts'
+            AND cc.check_clause LIKE '%transport_request_id%'
+       ) >= 1 AS transport_identifier_check_present,
+       (
+         SELECT count(*)
+           FROM information_schema.columns
+          WHERE table_schema = 'mhelix_testwired'
+            AND table_name = 'mhelix_action_receipts'
+            AND column_name = 'transport_request_id'
+            AND is_nullable = 'YES'
+       ) = 1 AS transport_identifier_column_nullable;
+
+-- 8. Preflight emptiness. Activation must not find pre-existing rows in the
+-- new tables. The capability table in particular must still be empty here;
+-- installing it is a separate later step.
 SELECT (SELECT count(*) FROM mhelix_testwired.mhelix_runtime_capabilities) = 0
          AS runtime_capabilities_empty,
        (SELECT count(*)
@@ -101,64 +258,115 @@ SELECT (SELECT count(*) FROM mhelix_testwired.mhelix_runtime_capabilities) = 0
           FROM mhelix_testwired.mhelix_recall_result_items) = 0
          AS recall_result_items_empty;
 
--- 6. Least-privilege proof for the runtime role. Every boolean must be true.
--- The runtime role must hold no DELETE or TRUNCATE anywhere in the schema, no
--- UPDATE on runs, no privilege at all on the migration ledger, and no grant
--- option on anything.
-SELECT count(*) FILTER (
-         WHERE privilege_type IN ('DELETE', 'TRUNCATE')
-       ) = 0 AS runtime_has_no_delete_or_truncate,
-       count(*) FILTER (
-         WHERE table_name = 'mhelix_runs' AND privilege_type = 'UPDATE'
-       ) = 0 AS runtime_has_no_update_on_runs,
-       count(*) FILTER (
-         WHERE table_name = 'mhelix_schema_migrations'
-       ) = 0 AS runtime_has_no_migration_ledger_privilege,
-       count(*) FILTER (
-         WHERE table_name = 'mhelix_recall_result_items'
-           AND privilege_type IN ('UPDATE', 'DELETE')
-       ) = 0 AS recall_results_are_immutable_by_privilege,
-       coalesce(bool_and(is_grantable = false), true)
-         AS runtime_holds_no_grant_option
-  FROM information_schema.table_privileges
- WHERE table_schema = 'mhelix_testwired'
-   AND grantee = 'mhelix_runtime';
+-- 9. TWO-WAY grant comparison for the runtime role. The expected set is
+-- declared inline, then compared in BOTH directions, so a missing grant, an
+-- extra grant, a grantable grant, or zero grants all fail.
+--
+-- Expected: SELECT on twelve tables and nothing else. Eleven come from the
+-- migration 002 grant packet; `mhelix_environment_markers` is the pre-existing
+-- grant from the migration 001 activation. This slice grants NO INSERT and NO
+-- UPDATE to the runtime role.
+WITH expected_grant (table_name, privilege_type) AS (
+  VALUES
+    ('mhelix_environment_markers', 'SELECT'),
+    ('mhelix_runtime_capabilities', 'SELECT'),
+    ('mhelix_case_namespaces', 'SELECT'),
+    ('mhelix_runs', 'SELECT'),
+    ('mhelix_memory_sessions', 'SELECT'),
+    ('mhelix_memory_events', 'SELECT'),
+    ('mhelix_memory_summaries', 'SELECT'),
+    ('mhelix_memory_summary_embeddings', 'SELECT'),
+    ('mhelix_projection_generations', 'SELECT'),
+    ('mhelix_run_active_projections', 'SELECT'),
+    ('mhelix_action_receipts', 'SELECT'),
+    ('mhelix_recall_result_items', 'SELECT')
+),
+actual_grant AS (
+  SELECT table_name, privilege_type, is_grantable
+    FROM information_schema.table_privileges
+   WHERE table_schema = 'mhelix_testwired'
+     AND grantee = 'mhelix_runtime'
+)
+SELECT (SELECT count(*) FROM actual_grant) = 12 AS runtime_grant_count_is_exact,
+       (
+         SELECT count(*) FROM (
+           SELECT table_name, privilege_type FROM expected_grant
+           EXCEPT
+           SELECT table_name, privilege_type FROM actual_grant
+         ) AS missing_grant
+       ) = 0 AS no_expected_grant_is_missing,
+       (
+         SELECT count(*) FROM (
+           SELECT table_name, privilege_type FROM actual_grant
+           EXCEPT
+           SELECT table_name, privilege_type FROM expected_grant
+         ) AS extra_grant
+       ) = 0 AS no_unexpected_grant_present,
+       (
+         SELECT count(*) FROM actual_grant WHERE is_grantable
+       ) = 0 AS no_grant_is_grantable,
+       (
+         SELECT count(*) FROM actual_grant
+          WHERE privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+       ) = 0 AS runtime_holds_no_write_privilege,
+       (
+         SELECT count(*)
+           FROM information_schema.table_privileges
+          WHERE table_schema = 'mhelix_testwired'
+            AND grantee = 'mhelix_runtime'
+            AND table_name = 'mhelix_schema_migrations'
+       ) = 0 AS runtime_has_no_migration_ledger_privilege;
 
--- ---------------------------------------------------------------------------
--- INTENDED RECALL QUERY AND PLAN CHECK: TEMPLATES ONLY, NOT EXECUTABLE HERE.
---
--- The two statements below are the reviewed SHAPE of the recall path. They are
--- intentionally left as commented templates because they require operator- or
--- application-supplied values that no committed file may fabricate: the exact
--- run identifier, the exact projection generation identifier, and the query
--- embedding produced at request time.
---
--- Both prefix columns are constrained to exact equality values, which is the
--- documented requirement for a vector index to be usable, and the ordering
--- uses the cosine distance operator matching the `vector_cosine_ops` operator
--- class declared in migration 002:
--- https://www.cockroachlabs.com/docs/v26.2/vector-indexes#define-prefix-columns
---
--- NO INDEX-USE CLAIM IS MADE. Whether the optimizer actually uses
--- `vec_mhelix_summary_embeddings_run_projection` is proven only by running the
--- EXPLAIN template below against the live cluster and observing a vector
--- search node with prefix spans. Until that live plan evidence exists, treat
--- the index as declared-but-unproven.
---
---   SELECT memory_summary_id,
---          embedding <=> $3 AS cosine_distance
---     FROM mhelix_testwired.mhelix_memory_summary_embeddings
---    WHERE run_id = $1
---      AND projection_generation_id = $2
---    ORDER BY embedding <=> $3
---    LIMIT 2;
---
---   EXPLAIN
---   SELECT memory_summary_id,
---          embedding <=> $3 AS cosine_distance
---     FROM mhelix_testwired.mhelix_memory_summary_embeddings
---    WHERE run_id = $1
---      AND projection_generation_id = $2
---    ORDER BY embedding <=> $3
---    LIMIT 2;
--- ---------------------------------------------------------------------------
+-- 10. Database CONNECT and schema USAGE exist, and neither is grantable.
+SELECT (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON DATABASE mhelix_testwired]
+          WHERE grantee = 'mhelix_runtime'
+            AND privilege_type = 'CONNECT'
+            AND NOT is_grantable
+       ) = 1 AS runtime_has_database_connect,
+       (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON DATABASE mhelix_testwired]
+          WHERE grantee = 'mhelix_runtime'
+            AND privilege_type <> 'CONNECT'
+       ) = 0 AS runtime_has_no_other_database_privilege,
+       (
+         SELECT count(*)
+           FROM information_schema.schema_privileges
+          WHERE table_schema = 'mhelix_testwired'
+            AND grantee = 'mhelix_runtime'
+            AND privilege_type = 'USAGE'
+       ) = 1 AS runtime_has_schema_usage,
+       (
+         SELECT count(*)
+           FROM information_schema.schema_privileges
+          WHERE table_schema = 'mhelix_testwired'
+            AND grantee = 'mhelix_runtime'
+            AND privilege_type <> 'USAGE'
+       ) = 0 AS runtime_has_no_other_schema_privilege;
+
+-- 11. Ownership and role membership. The runtime role must own nothing in this
+-- schema and must inherit no dangerous role. Ownership carries implicit full
+-- privilege and the grant option, so an unexpected owner would silently defeat
+-- every grant check above.
+SELECT (
+         SELECT count(*)
+           FROM [SHOW TABLES FROM mhelix_testwired]
+          WHERE owner = 'mhelix_runtime'
+       ) = 0 AS runtime_owns_no_table,
+       (
+         SELECT count(*)
+           FROM [SHOW TABLES FROM mhelix_testwired]
+          WHERE owner <> 'mhelix_migrator'
+       ) = 0 AS every_table_owned_by_migrator,
+       (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON ROLE FOR mhelix_runtime]
+       ) = 0 AS runtime_holds_no_role_membership,
+       (
+         SELECT count(*)
+           FROM [SHOW GRANTS ON ROLE FOR mhelix_runtime]
+          WHERE role_name IN ('admin', 'root', 'owner')
+             OR is_admin
+       ) = 0 AS runtime_inherits_no_dangerous_role;

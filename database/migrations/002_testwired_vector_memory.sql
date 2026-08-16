@@ -38,8 +38,12 @@
 
 -- Release-bound runtime capability marker. A capability is bound to one exact
 -- release commit, so a stale deployment can never claim a newer capability.
--- Public mutations stay disabled at the schema level: the CHECK makes any row
--- asserting enabled public mutations impossible to insert in this environment.
+--
+-- SCOPE OF `public_mutations_enabled`: the CHECK below makes it impossible for
+-- a capability row to CLAIM mutation readiness. That is all it does. It does
+-- NOT independently prevent every table mutation, and it is not a substitute
+-- for the exact-statement application executor and the reviewed database
+-- mutation boundary, both of which are still required before any public write.
 CREATE TABLE IF NOT EXISTS mhelix_testwired.mhelix_runtime_capabilities (
   capability_id STRING NOT NULL,
   marker_id STRING NOT NULL
@@ -136,23 +140,43 @@ CREATE TABLE IF NOT EXISTS mhelix_testwired.mhelix_memory_summary_embeddings (
   )
 );
 
+-- Additive composite receipt identity on the EXISTING action-receipts table
+-- from migration 001. This adds no column and changes no existing definition.
+-- It exists so a recall-result row can carry a foreign key that pins the
+-- receipt's run AND its operation, not just the receipt identifier.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_mhelix_action_receipts_run_receipt_operation
+  ON mhelix_testwired.mhelix_action_receipts
+    (run_id, action_receipt_id, operation);
+
 -- Immutable ranked recall-result items.
 --
 -- Each row is one ranked candidate durably attached to the action receipt that
 -- produced it, so a receipt can reproduce the exact stored evidence references
 -- it returned. Immutability is enforced by privilege, not by trigger: the
--- reviewed grants give this table INSERT and SELECT only, never UPDATE or
--- DELETE.
+-- reviewed grants withhold UPDATE and DELETE on this table.
+--
+-- CROSS-RUN AND WRONG-OPERATION PROTECTION: the composite foreign key below
+-- forces the referenced receipt to share this row's run_id AND to be a
+-- 'recall' receipt. A single-column reference to action_receipt_id would have
+-- allowed a recall result to be attached to a receipt from a different run, or
+-- to a non-recall operation such as a denial. The redundant `operation` column
+-- is pinned by CHECK to the exact operation literal already allow-listed in
+-- migration 001.
+--
+-- Deliberately NOT enforced: that the recalled summary shares a session with
+-- the recall receipt. Cross-session recall is the point of the feature, since
+-- Session B must read a summary written by Session A.
 --
 -- The rank ceiling of two matches the bounded two-candidate recall query. The
 -- two uniqueness constraints make a duplicate durable result impossible: one
 -- rank may appear once per receipt, and one summary may appear once per
--- receipt.
+-- receipt. No separate receipt-rank index is declared, because the
+-- UNIQUE (action_receipt_id, result_rank) constraint already creates one.
 CREATE TABLE IF NOT EXISTS mhelix_testwired.mhelix_recall_result_items (
   recall_result_item_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  action_receipt_id UUID NOT NULL
-    REFERENCES mhelix_testwired.mhelix_action_receipts (action_receipt_id),
+  action_receipt_id UUID NOT NULL,
   run_id UUID NOT NULL,
+  operation STRING NOT NULL,
   projection_generation_id UUID NOT NULL,
   memory_summary_id UUID NOT NULL,
   result_rank INT8 NOT NULL,
@@ -161,19 +185,19 @@ CREATE TABLE IF NOT EXISTS mhelix_testwired.mhelix_recall_result_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (action_receipt_id, result_rank),
   UNIQUE (action_receipt_id, memory_summary_id),
+  FOREIGN KEY (run_id, action_receipt_id, operation)
+    REFERENCES mhelix_testwired.mhelix_action_receipts
+      (run_id, action_receipt_id, operation),
   FOREIGN KEY (run_id, projection_generation_id, memory_summary_id)
     REFERENCES mhelix_testwired.mhelix_memory_summary_embeddings
       (run_id, projection_generation_id, memory_summary_id),
+  CHECK (operation = 'recall'),
   CHECK (result_rank >= 1),
   CHECK (result_rank <= 2),
   CHECK (cosine_distance >= 0.0),
   CHECK (cosine_distance <= 2.0),
   CHECK (octet_length(result_commitment) = 32)
 );
-
-CREATE INDEX IF NOT EXISTS idx_mhelix_recall_result_items_receipt
-  ON mhelix_testwired.mhelix_recall_result_items
-    (action_receipt_id, result_rank);
 
 -- Original transport request identifier on action receipts.
 --

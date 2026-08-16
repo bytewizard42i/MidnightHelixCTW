@@ -40,7 +40,7 @@ INSERT INTO mhelix_testwired.mhelix_schema_migrations
 VALUES
   ('002_testwired_vector_memory',
    'database/migrations/002_testwired_vector_memory.sql',
-   'f166b9ffd2e1e77aa736eb1398650cd282dee97444087007866a4c5adff43374',
+   'caf95f61b5c43755de94d24e7980966d423da3a5ae9c2e4980080832d99ec20b',
    7);
 
 COMMIT;
