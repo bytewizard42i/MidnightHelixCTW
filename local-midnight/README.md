@@ -26,6 +26,13 @@ cryptographic commitment to private data. This is **not** private DID
 (Decentralized Identifier) authorization and **not** production privacy.
 Never supply sensitive data to this canary.
 
+**Hosted CI (Continuous Integration) does not execute this flow.** This
+folder is not a root npm workspace, and no hosted runner starts the node,
+indexer, or proof server. The green GitHub checks cover the root repository
+suite and the secret scan only. Every result here — install, compile,
+Compose validation, stack health, deployment, transaction, proof, and
+readback — is locally executed, separately reported evidence.
+
 ## What runs where
 
 | Service | Image (pinned) | Port (localhost only) |
@@ -43,12 +50,15 @@ example, public targeting follows the compatibility matrix.
 
 The Midnight wallet SDK (Software Development Kit) requires Node.js 22 or
 newer; Node.js 20 crashes at first wallet sync. The exact known-good
-version is pinned in `.nvmrc`. Every compile, smoke, and network command
-runs a fail-fast preflight (`scripts/preflight-node.mjs`) that stops with
-an activation instruction when the resolved Node.js is too old — this
-protects noninteractive shells (scripts, editors, CI (Continuous
+version is pinned in `.nvmrc`. The **`compile:contract` and `smoke`
+commands** run a fail-fast preflight (`scripts/preflight-node.mjs`) that
+stops with an activation instruction when the resolved Node.js is too old —
+this protects noninteractive shells (scripts, editors, CI (Continuous
 Integration)) that may resolve a different Node.js than your interactive
-terminal. To activate with nvm (Node Version Manager):
+terminal. The **`net:*` commands do not** run the preflight: they drive
+Docker Compose only and do not execute project JavaScript, so the Node.js
+version does not affect them. You can also run `npm run preflight` on its
+own. To activate with nvm (Node Version Manager):
 
 ```bash
 nvm install $(cat .nvmrc) && nvm use $(cat .nvmrc)
@@ -88,10 +98,25 @@ npm run net:up             # start the pinned stack, wait for ready
 npm run smoke              # preflight + deploy → 1 tx → readback → receipt
 ```
 
-**Provenance guard:** the smoke driver derives the full 40-hex-character
-Git `HEAD` itself and refuses to run when tracked source is dirty (ignored
-runtime state may remain). The receipt stamps that exact commit; there is
-deliberately no override, so a caller cannot forge provenance.
+**Commit binding (what the receipt does and does not prove):** the smoke
+driver derives the full 40-hex-character Git `HEAD` itself and refuses to
+run when tracked source is dirty (ignored runtime state may remain). The
+receipt stamps that exact commit, and there is deliberately no override, so
+a caller cannot hand the driver an arbitrary commit string.
+
+That binding covers the **clean tracked Git `HEAD` only**. The receipt does
+**not** independently attest that the git-ignored compiled artifacts in
+`artifacts/`, the installed `node_modules` dependencies, the `compact`
+compiler binary, or the contents of the running Docker container images
+were built from that same commit — those are git-ignored or external, so a
+stale artifact from an earlier build could in principle be loaded by a run
+whose tracked source is clean. Those components are supported by **separate
+checks reported alongside each run**: reproducible `npm ci` from the
+committed exact-pin lockfile, `compact compile` with its recorded toolchain
+version and no skip flags, pinned image tags with recorded digests and
+passing health checks, and the indexer readback comparing on-ledger bytes
+and row count. Run `compile:contract` before `smoke`, as the order above
+shows, so the artifacts match the source you are testing.
 
 The driver reads the pre-funded genesis dev seed from the
 `MIDNIGHT_GENESIS_SEED` environment variable only (the value is documented

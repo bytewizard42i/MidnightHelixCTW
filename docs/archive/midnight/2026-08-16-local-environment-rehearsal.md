@@ -10,9 +10,15 @@ pinned local Midnight development stack, using the canonical DIDzM
 (DIDzMonolith) source-routing policy. The retired Idris/Olanetsoft MCP
 (Model Context Protocol) integration was not used at any point.
 
-**This milestone cannot and does not claim `VERIFIED LOCAL`.** The node,
+**Reading order — the `PROPOSED` label below applies ONLY to the initial
+scaffold checkpoint that opens this document.** At that checkpoint the node,
 indexer, proof server, wallet, deployment, transaction, and ledger readback
-were never run. Every network-facing behavior below is `PROPOSED`.
+had never been run, so the scaffold itself could not and did not claim
+`VERIFIED LOCAL`, and every network-facing behavior described in that first
+section is `PROPOSED`. The later dated addenda in this same document record
+supervised executions that **did** earn `VERIFIED_LOCAL` for the local
+disposable network only. Do not read the opening `PROPOSED` labels as the
+current status of the branch; read each section with its own date and label.
 
 ---
 
@@ -195,9 +201,26 @@ as historical facts. A third run reported in the session log at that time
 had no archived receipt and therefore counted as reported, not durable,
 evidence. From the correction commit onward the driver derives the full
 40-hex-character Git `HEAD` itself, refuses to run when tracked source is
-dirty, and stamps that exact commit — the caller-supplied
-`SMOKE_SOURCE_COMMIT` override has been removed so provenance cannot be
-forged.
+dirty, and stamps that exact commit; the caller-supplied
+`SMOKE_SOURCE_COMMIT` override has been removed, so a caller can no longer
+hand the driver an arbitrary commit string.
+
+**Evidence boundary for every receipt in this document (read this before
+citing any receipt).** A receipt binds the run to the **clean tracked Git
+`HEAD`** — nothing more. It does **not** independently attest that the
+git-ignored compiled Compact artifacts, the installed `node_modules`
+dependencies, the `compact` compiler binary, or the contents of the running
+Docker container images were produced from that exact commit. Those
+components are git-ignored or external, so the receipt cannot seal them to
+the tree; in principle an artifact left over from an earlier build could be
+loaded by a run whose tracked source is clean. What supports those
+components is the **separately reported** evidence recorded alongside each
+run: the reproducible `npm ci` install from the committed exact-pin
+lockfile, the `compact compile` invocation with its recorded toolchain
+version and no skip flags, the pinned Docker image tags with their recorded
+digests and passing health checks, and the indexer readback that compared
+the on-ledger bytes and row count. Read the commit binding and that
+supporting evidence together; neither one alone proves the whole box.
 
 **Run 3 (Session 5 correction verification — clean committed tree,
 recoverable reset, provenance-bound), sanitized receipt (exit 0):**
@@ -287,11 +310,16 @@ approximately 69 seconds.
 }
 ```
 
-Its `sourceCommit` proves the exact clean merged implementation that Run 4
-exercised. The evidence-only commit carrying this record necessarily
-receives a newer Git commit hash, because adding a receipt changes the hash
-of the commit that contains it; that newer hash does not weaken the
-provenance recorded above.
+Its `sourceCommit` records that the tracked Git tree was clean at the merged
+commit `445f4f85…` when Run 4 began. Per the evidence boundary stated above,
+that binding covers the tracked source only — the git-ignored compiled
+artifacts, the installed dependencies, the compiler binary, and the running
+container image contents are not independently attested by this receipt, and
+are supported instead by the separately reported install, compile, Docker
+health, and readback checks listed next. The evidence-only commit carrying
+this record necessarily receives a newer Git commit hash, because adding a
+receipt changes the hash of the commit that contains it; that newer hash
+does not weaken the commit binding recorded above.
 
 Check record for Run 4 (all exit 0): Node.js preflight passed (v22.23.2,
 pinned via `.nvmrc`); `npm ci` reproducible install in `local-midnight/`
@@ -321,9 +349,33 @@ Public-network, AWS (Amazon Web Services), CockroachDB, and production
 claims are unchanged. `LIVE MIDNIGHT TEST NETWORK` still requires a real
 public test-network receipt and remains out of scope.
 
-Runtime artifacts (`midnight-level-db/` private-state store, `logs/`
-testkit logger output) were scanned (no seed strings), added to
-`.gitignore`, and deleted — never committed.
+**Hosted CI (Continuous Integration) does not execute the local Midnight
+transaction flow.** `local-midnight/` is not a root npm workspace, and no
+hosted runner starts the node, indexer, or proof server. The green GitHub
+checks validate the root repository suite and the secret scan only. Every
+local three-container result in this document — install, compile, Compose
+validation, stack health, deployment, transaction, proof, and readback —
+is **locally executed, separately reported evidence**, not something a
+hosted runner reproduced.
+
+**Runtime-state history, reconciled across sessions.** Runtime artifacts
+(`midnight-level-db/` private-state store, `logs/` testkit logger output)
+were scanned (no seed strings), added to `.gitignore`, and were **never
+committed** at any point. Their disposal changed partway through, so the
+sentences above are dated, not contradictory:
+
+- **Before the recoverable archiver existed** (the Session 4 execution
+  milestone), this state was simply **deleted** after the run. That is why
+  the Run 3 reset found `nothing to archive`.
+- **From the Session 5 correction onward**, deletion was retired. The
+  hardened, fail-closed archiver **moves** state into an ignored,
+  timestamped `state-archive/<stamp>/` folder and verifies the move before
+  reporting success. Run 3 state was preserved to
+  `state-archive/20260816T124138Z/`, and **Run 4 state was archived
+  recoverably** to `state-archive/20260816T133558Z/`.
+
+So only the earlier, pre-archiver state was deleted; no state has been
+silently deleted since.
 
 ## BLOCKED
 
