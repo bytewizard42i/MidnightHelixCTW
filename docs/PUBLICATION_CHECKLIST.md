@@ -12,7 +12,7 @@ commit and public URLs (Uniform Resource Locators) exist.
 | Guided UI, narration allowlist, keyboard and reduced-motion source, request guards, and typed evidence validation | Local source and tests exist | Repeat built-preview desktop, mobile, accessibility, console, and network checks at the release commit. |
 | AWS (Amazon Web Services) SAM (Serverless Application Model) source and built-template OpenAPI (Open Application Programming Interface) contract | Deployed transport is `CREATE_COMPLETE`; read-only public routes are live and mutation requests fail closed | Repeat release-commit browser, log, and public-link checks. |
 | Public UI (User Interface), generated AWS (Amazon Web Services) API (Application Programming Interface), CloudWatch runtime evidence | Generated and custom frontend addresses are live; exact-origin CORS (Cross-Origin Resource Sharing) and fail-closed mutation behavior were verified | Final judge-flow and release-commit evidence gates remain open. |
-| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; least-privilege runtime denial was verified; exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback | The deployed runtime bootstrap remains open, so the application provider stays `NOT_CONNECTED`. |
+| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; least-privilege runtime denial was verified; exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback | A reviewed runtime bootstrap exists in source, but deployment and public verification remain open, so the application provider stays `NOT_CONNECTED`. |
 | Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | Not connected | Their live, video, and sponsor-tool gates remain open. |
 
 See [WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md) for the dated evidence and
@@ -34,9 +34,17 @@ known limitations.
 - [x] Sanitized post-commit readback showed exactly one canonical marker row
   with all 8 comparisons true across the entire marker table and exactly one
   migration-001 ledger row with all 6 comparisons true.
-- [ ] Configure the expected marker digest, bounded query executor, server-side
-  timeout, and secret reference in the reviewed AWS (Amazon Web Services)
-  Lambda bootstrap.
+- [x] Source pins the expected marker commitment, database, runtime user, port,
+  secret schema, CockroachDB host, certificate shape, server-side timeout, and
+  bounded query executor in the deployment-only Lambda bootstrap.
+- [x] Source grants `secretsmanager:GetSecretValue` on one exact existing
+  secret ARN (Amazon Resource Name), creates no secret or output, and adds no
+  wildcard, KMS (Key Management Service), or VPC (Virtual Private Cloud)
+  permission.
+- [ ] Regenerate and review the root package lock, then prove the SAM (Serverless
+  Application Model) artifact contains `src/lambda.js`, `pg`, and the
+  AWS (Amazon Web Services) Secrets Manager client while excluding application
+  tests and documentation.
 - [ ] Verify the deployed read-only status path reports the expected database,
   runtime identity, and environment marker before promoting CockroachDB from
   `NOT_CONNECTED`.

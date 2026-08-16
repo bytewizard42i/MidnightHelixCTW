@@ -20,8 +20,8 @@ require_command() {
 
 require_command node "Install Node.js 20 or newer."
 
-node --test "${REPOSITORY_ROOT}/apps/api/test/handler.test.mjs"
-node --test "${STACK_DIRECTORY}/test/template-contract.test.mjs"
+node --test "${REPOSITORY_ROOT}/apps/api/test/"*.test.mjs
+node --test "${STACK_DIRECTORY}/test/"*.test.mjs
 "${SCRIPT_DIRECTORY}/build.sh"
 
-echo "MidnightHelixCTW API and SAM validation passed."
+echo "MidnightHelixCTW API, runtime, smoke-contract, and SAM validation passed."

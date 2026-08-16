@@ -62,8 +62,10 @@ and must not own the schema or its objects. Those owner, definition, and
 privilege checks are required activation evidence and are not implemented by
 this source migration.
 
-This repository intentionally does not include a deployed driver bootstrap or a
-general migration command. Migration `001_testwired_memory_core.sql` was
+This repository includes a reviewed deployment-only, read-only driver
+bootstrap in source, but the current deployed Lambda does not contain it and no
+public probe has verified it. The repository intentionally includes no general
+migration command. Migration `001_testwired_memory_core.sql` was
 independently applied on 2026-08-15 to database and schema `mhelix_testwired`.
 It created 10 tables owned by `mhelix_migrator`. The `mhelix_migrator`
 and `mhelix_runtime` users do not inherit `admin`. The runtime user has database
@@ -81,9 +83,12 @@ This is `LIVE TESTWIRED` foundation evidence only. The deployed AWS (Amazon Web
 Services) Lambda transport has no database bootstrap. The CockroachDB
 application provider remains `NOT_CONNECTED`; persistent memory, vector
 retrieval, and Managed MCP (Model Context Protocol) remain unproven and planned.
-The Lambda runtime will eventually receive only a named AWS (Amazon Web Services)
-Secrets Manager reference and narrow data permissions, never schema ownership
-or plaintext connection material in the browser or repository.
+The reviewed deployment source accepts only the exact ARN (Amazon Resource
+Name) of one existing AWS (Amazon Web Services) Secrets Manager secret and
+narrow read permission. It creates or outputs no secret, grants no schema
+ownership, and places no plaintext connection material in the browser or
+repository. This bootstrap remains deployment and public-probe work, so the
+provider remains `NOT_CONNECTED`.
 
 ## Canonical TestWired environment marker
 

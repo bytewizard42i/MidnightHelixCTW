@@ -180,11 +180,13 @@ test("status and scenario catalog expose only the fixed synthetic surface", asyn
   assert.equal(status.readyForMutations, false);
   assert.equal(status.providers.find((provider) => provider.id === "managed-mcp")?.evidence, "SOURCE_ONLY");
   assert.equal(status.buildStage, "TESTWIRED");
+  assert.equal(status.releaseCommit, process.env.MHELIX_RELEASE_COMMIT);
   assertScopedRuntimeEvidence(status, "SOURCE_ONLY", "NOT_CONNECTED");
   assert.equal(status.deploymentEvidence, "SOURCE_ONLY");
 
   const catalog = payload(await handler(event("GET", "/api/v1/judge/scenarios")));
   assert.equal(catalog.buildStage, "TESTWIRED");
+  assert.equal(catalog.releaseCommit, process.env.MHELIX_RELEASE_COMMIT);
   assertScopedRuntimeEvidence(catalog, "SOURCE_ONLY", "NOT_CONNECTED");
   assert.equal(catalog.deploymentEvidence, "SOURCE_ONLY");
   const scenario = catalog.scenarios[0];
@@ -262,6 +264,7 @@ test("valid operational requests never fabricate a run, receipt, or predicate re
     const response = await handler(request);
     assertErrorEnvelope(response, 503, "LIVE_PROVIDERS_NOT_CONNECTED");
     const body = payload(response);
+    assert.equal(body.releaseCommit, process.env.MHELIX_RELEASE_COMMIT);
     assert.equal(body.runId, undefined);
     assert.equal(body.sessionId, undefined);
     assert.equal(body.receiptId, undefined);

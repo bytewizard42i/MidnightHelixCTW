@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  MidnightHelixCTW Phase 1 TestWired API shell. This stack creates a bounded
-  public transport only and connects no database, model, or test network.
+  MidnightHelixCTW Phase 1 TestWired API with a bounded read-only CockroachDB
+  connection and environment-marker probe. No memory, vector, model, wallet,
+  or test-network operation is enabled.
 
 Rules:
   DeployOnlyInUsEast1:
@@ -11,6 +12,14 @@ Rules:
         AssertDescription: MidnightHelixCTW TestWired is pinned to us-east-1.
 
 Parameters:
+  CockroachRuntimeSecretArn:
+    Type: String
+    NoEcho: true
+    AllowedPattern: '^arn:aws:secretsmanager:us-east-1:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]{1,512}-[A-Za-z0-9]{6}$'
+    ConstraintDescription: >-
+      Supply the full us-east-1 ARN of the existing Cockroach runtime secret.
+      Wildcards, secret values, partial ARNs, and secret creation are not accepted.
+
   PublicAllowedOrigins:
     Type: String
     AllowedPattern: '^https://[A-Za-z0-9.-]+(?::[0-9]+)?(?:,https://[A-Za-z0-9.-]+(?::[0-9]+)?){0,3}$'
@@ -70,7 +79,7 @@ Resources:
   ApiFunctionRole:
     Type: AWS::IAM::Role
     Properties:
-      Description: Least-privilege logging role for the disconnected Phase 1 API shell.
+      Description: Least-privilege role for logs and one named Cockroach runtime secret.
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -90,6 +99,14 @@ Resources:
                   - logs:PutLogEvents
                 Resource: !Sub >-
                   arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-worker:*
+        - PolicyName: ReadNamedCockroachRuntimeSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadNamedCockroachRuntimeSecret
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref CockroachRuntimeSecretArn
       Tags:
         - Key: Project
           Value: MidnightHelixCTW
@@ -143,15 +160,16 @@ Resources:
     Properties:
       FunctionName: !Sub ${AWS::StackName}-worker
       Description: >-
-        Validates the fixed synthetic workflow and fails closed while live
-        providers remain disconnected.
-      CodeUri: ../../apps/api/
-      Handler: src/handler.handler
+        Validates the fixed synthetic workflow, performs one bounded read-only
+        Cockroach connection and environment probe, and keeps mutations disabled.
+      CodeUri: ../../
+      Handler: src/lambda.handler
       Role: !GetAtt ApiFunctionRole.Arn
       Environment:
         Variables:
           MHELIX_PUBLIC_ALLOWED_ORIGINS: !Ref PublicAllowedOrigins
           MHELIX_RELEASE_COMMIT: !Ref ReleaseCommit
+          MHELIX_COCKROACH_RUNTIME_SECRET_ARN: !Ref CockroachRuntimeSecretArn
       Events:
         Health:
           Type: HttpApi
@@ -212,6 +230,8 @@ Resources:
       Tags:
         Project: MidnightHelixCTW
         Stage: TestWired
+    Metadata:
+      BuildMethod: makefile
 
 Outputs:
   TestWiredApiUrl:
