@@ -594,6 +594,7 @@ function validateActionBody(requestBody) {
 function unavailableOperationPayload(configuration, requestId, providerStates) {
   return {
     ...buildBasePayload(false, requestId),
+    releaseCommit: configuration.releaseCommit,
     error: {
       code: "LIVE_PROVIDERS_NOT_CONNECTED",
       message:
@@ -752,6 +753,7 @@ async function dispatchRequest(
         buildStage: configuration.buildStage,
         deploymentEvidence: configuration.deploymentEvidence,
         transport: buildTransportStatus(configuration, requestId),
+        releaseCommit: configuration.releaseCommit,
         scenarios: [
           {
             ...CANONICAL_SCENARIO,

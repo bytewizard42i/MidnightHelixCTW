@@ -27,7 +27,7 @@ flowchart LR
     Gateway -->|"live invocation"| Lambda
     Lambda -->|"live read-only response"| Gateway
     Lambda -->|"mutation attempts fail closed"| Guard
-    Lambda -. "reviewed bootstrap pending" .-> Cockroach
+    Lambda -. "reviewed source, deployment and public probe pending" .-> Cockroach
     Lambda -. "planned connection" .-> Bedrock
     Lambda -. "callable provider not connected" .-> Mocks
     Lambda -. "planned connection" .-> Evaluator
@@ -50,8 +50,9 @@ Only the AWS (Amazon Web Services) transport and public UI (User Interface)
 hosting are application-connected. CockroachDB has a verified live schema
 foundation, least-privilege migrator and runtime users, and a committed
 environment-marker contract. An authenticated `mhelix_migrator` session
-applied the reviewed atomic activation from source commit `7a29f22`, but the
-deployed runtime bootstrap remains absent. The CockroachDB application provider,
+applied the reviewed atomic activation from source commit `7a29f22`. A
+read-only bootstrap is reviewed in source, but it remains absent from the
+current deployment and has no public probe evidence. The CockroachDB application provider,
 AWS (Amazon Web Services) Bedrock, Midnight, and Managed MCP (Model Context
 Protocol) remain `NOT_CONNECTED`. Valid mutations return
 `503 LIVE_PROVIDERS_NOT_CONNECTED` and fail closed, so the global
@@ -66,9 +67,9 @@ Migration `001_testwired_memory_core.sql` created 10 tables owned by
 `mhelix_migrator`. The `mhelix_runtime` user has database `CONNECT`, schema
 `USAGE`, and `SELECT` only on the environment-marker table; access to
 `mhelix_runs` is denied as intended. Exactly one canonical environment-marker
-row and one migration-001 ledger row passed sanitized post-commit readback. The
-deployed AWS (Amazon Web Services) Lambda transport does not inject a database
-provider. Durable session history, append-only events, privacy-safe summaries,
+row and one migration-001 ledger row passed sanitized post-commit readback. The current deployed AWS (Amazon Web Services) Lambda transport does not inject
+a database provider. The reviewed deployment-only bootstrap source has not been
+deployed or publicly verified. Durable session history, append-only events, privacy-safe summaries,
 vectors, exact property state, rebuild generations, and receipts therefore
 remain planned and disconnected application capabilities.
 

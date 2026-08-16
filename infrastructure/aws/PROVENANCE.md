@@ -22,13 +22,18 @@ Neutral patterns adapted here include:
 - API-level burst and rate throttling;
 - clean-tree and explicit-acknowledgement deployment guards;
 - generated AWS URL output and read-only smoke checks;
-- package inspection before deployment.
+- package inspection before deployment;
+- an exact read of one existing Cockroach runtime secret, without creating or
+  outputting a secret or secret value.
 
 The original voice-note and payment scenario, live provider implementation,
 Secrets Manager resource, and Bedrock permissions were not copied. This stack
-uses the fictional Morrow property scenario, grants only log writes, exposes no
-provider credential container, and truthfully returns `NOT_CONNECTED` and
-`SOURCE_ONLY` until later integrations are independently verified.
+uses the fictional Morrow property scenario and creates no provider credential
+container. Reviewed source adds only `secretsmanager:GetSecretValue` for the
+exact existing-secret ARN (Amazon Resource Name), alongside writes to its own
+log stream. It has not been deployed or publicly probed, so the current
+CockroachDB application provider truth remains `NOT_CONNECTED` and
+`SOURCE_ONLY`.
 
 The original HelixCTW files remain untouched and authoritative for their own
 history. This repository is authoritative for the new standalone API shell.

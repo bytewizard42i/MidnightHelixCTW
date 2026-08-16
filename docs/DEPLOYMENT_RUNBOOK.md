@@ -36,9 +36,10 @@ current live evidence.
 > authenticated `mhelix_migrator` session applied it. Sanitized post-commit
 > readback showed exactly one canonical marker row with all 8 comparisons true
 > across the entire marker table and exactly one migration-001 ledger row with
-> all 6 comparisons true. The deployed AWS (Amazon Web Services) Lambda has no
-> database bootstrap, so CockroachDB remains `NOT_CONNECTED` at the application
-> provider boundary. See the
+> all 6 comparisons true. The reviewed source now contains a deployment-only
+> database bootstrap, but it has not been deployed or publicly verified. The
+> currently deployed Lambda therefore still reports CockroachDB
+> `NOT_CONNECTED` at the application provider boundary. See the
 > [sanitized activation archive](archive/cockroachdb/2026-08-15-marker-activation.md).
 
 ## Target public surfaces
@@ -92,9 +93,10 @@ remains `TESTWIRED`; each capability is promoted separately only after its requi
 
 The 2026-08-15 foundation checkpoint completed the isolated database, schema,
 migration, table ownership, role separation, negative permission test, and
-canonical marker and migration-ledger activation. The deployed AWS (Amazon Web
-Services) Lambda bootstrap, fixture seed, and vector path remain incomplete.
-The application provider therefore remains `NOT_CONNECTED`.
+canonical marker and migration-ledger activation. The reviewed Lambda bootstrap
+now exists in source, but deployment and public verification, fixture seed, and
+the vector path remain incomplete. The currently deployed application provider
+therefore remains `NOT_CONNECTED`.
 
 1. Select the Basic cluster intended for the hackathon.
 2. Use the dedicated `mhelix_testwired` database rather than sharing the public schema with unrelated
@@ -107,11 +109,13 @@ The application provider therefore remains `NOT_CONNECTED`.
    and runtime user.
 8. Apply migrations and seed only the immutable synthetic fixture namespace.
 
-Steps 1 through 4, Step 6, and Step 7 have verified foundation evidence. The
-Step 7 activation was applied by an authenticated `mhelix_migrator` session
-from source commit `7a29f22`; sanitized post-commit readback returned all 8
-marker comparisons and all 6 ledger comparisons true. Step 5 remains open until
-the Managed MCP (Model Context Protocol) role is separately proven read only.
+Steps 1 through 4 and Step 6 have verified foundation evidence. The row-insertion
+and canonical-value portion of Step 7 is verified: an authenticated
+`mhelix_migrator` session applied the activation from source commit `7a29f22`,
+and sanitized post-commit readback returned all 8 marker comparisons and all 6
+ledger comparisons true. The expected-database and expected-runtime-user checks
+remain part of the deployed Lambda bootstrap and probe gate. Step 5 remains open
+until the Managed MCP (Model Context Protocol) role is separately proven read only.
 Before the provider can be promoted, deploy and verify the reviewed Lambda
 bootstrap. Step 8 remains open until the synthetic fixture and vector path are
 implemented and verified.
@@ -127,8 +131,20 @@ Create Secrets Manager entries for:
 - Midnight test wallet or service material only if the chosen integration needs it;
 - encrypted-evidence key references, never raw fixture plaintext.
 
-The Lambda environment receives secret ARNs, not secret values. The function role
-gets `GetSecretValue` only for its named secrets.
+The Lambda environment receives the exact ARN (Amazon Resource Name) of the
+existing Cockroach runtime secret, not the secret value. The stack creates no
+secret and produces no secret output. Its role grants exactly
+`secretsmanager:GetSecretValue` on that one ARN (Amazon Resource Name), with no
+wildcard resource.
+
+The existing secret must use the AWS (Amazon Web Services) managed
+`aws/secretsmanager` key. A customer-managed KMS (Key Management Service) key
+requires a separately reviewed exact `kms:Decrypt` grant and key policy, which
+this stack intentionally does not add. The secret object must contain exactly
+`schemaVersion`, `host`, `port`, `database`, `username`, `password`,
+and `caCertificatePem`, with schema version
+`mhelixctw/cockroach-secret/v1`. Never place the value or identifier in Git,
+chat, a public log, or a CloudFormation output.
 
 ## Step 3, deploy AWS
 
@@ -168,11 +184,14 @@ Responses use schema `mhelixctw/api/v1`. POST requests require JSON and an
 accept at most 4096 body bytes. Before provider connection, operational routes
 fail closed with `503 LIVE_PROVIDERS_NOT_CONNECTED`.
 
-A response emitted inside the validated AWS Lambda runtime marks only the AWS
-transport provider `REALDEAL_TEST` and `CONNECTED`. The global
-`deploymentEvidence` field remains `SOURCE_ONLY`; every downstream provider,
-guided availability, and mutation stays disconnected until independently
-verified.
+A response emitted inside the validated AWS Lambda runtime marks the AWS
+transport provider `REALDEAL_TEST` and `CONNECTED`. After the new bootstrap is
+deployed, only a successful bounded marker probe may additionally mark the
+CockroachDB connection-and-environment row `REALDEAL_TEST` and `CONNECTED`.
+The global `deploymentEvidence` field must remain `SOURCE_ONLY`;
+`currentAvailability` must remain `NOT_CONNECTED`;
+`readyForMutations` must remain false; and every other provider must remain
+`SOURCE_ONLY` and `NOT_CONNECTED`.
 
 ## Step 4, connect the real TestWired path
 

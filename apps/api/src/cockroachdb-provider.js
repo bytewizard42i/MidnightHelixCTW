@@ -8,11 +8,9 @@ import {
 
 /**
  * This module deliberately depends on a tiny query-executor interface instead
- * of a database driver. A later, separately reviewed bootstrap can provide an
- * adapter around a bounded node-postgres pool. That adapter must implement this
- * interface and enforce statementTimeoutMilliseconds on the database server
- * without coupling provider behavior or unit tests to a network socket,
- * credential source, or package installation.
+ * of a database driver. A separately reviewed bootstrap provides an adapter
+ * around a bounded node-postgres pool. That adapter must implement this
+ * interface and enforce statementTimeoutMilliseconds on the database server.
  *
  * @typedef {{
  *   query(
@@ -31,12 +29,18 @@ export {
 export const MHELIX_COCKROACH_PROBE_SCHEMA_VERSION =
   "mhelixctw/cockroach-probe/v1";
 
-const SAFE_CONFIGURATION_VALUE_PATTERN = /^[^\u0000-\u001F\u007F]{1,128}$/u;
-const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const MHELIX_COCKROACH_PROBE_RESULT_COLUMNS = Object.freeze([
+  "database_matches",
+  "runtime_user_matches",
+  "marker_commitment_matches",
+  "marker_id",
+  "build_stage",
+  "marker_version",
+  "evidence_receipt_id",
+  "observed_at",
+]);
 
-const PROBE_STATEMENT = [
+export const MHELIX_COCKROACH_PROBE_STATEMENT = [
   "SELECT current_database() = $1 AS database_matches,",
   "       current_user = $2 AS runtime_user_matches,",
   "       encode(marker_commitment, 'hex') = $4 AS marker_commitment_matches,",
@@ -49,6 +53,11 @@ const PROBE_STATEMENT = [
   " WHERE marker_id = $3",
   " LIMIT 2",
 ].join("\n");
+
+const SAFE_CONFIGURATION_VALUE_PATTERN = /^[^\u0000-\u001F\u007F]{1,128}$/u;
+const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function requireSafeConfigurationValue(value, label) {
   if (typeof value !== "string" || !SAFE_CONFIGURATION_VALUE_PATTERN.test(value)) {
@@ -211,7 +220,7 @@ export function createCockroachDbProvider(options) {
     const resultPromise = Promise.resolve()
       .then(() =>
         options.queryExecutor.query(
-          PROBE_STATEMENT,
+          MHELIX_COCKROACH_PROBE_STATEMENT,
           [
             expectedDatabaseName,
             expectedRuntimeUser,
@@ -234,10 +243,10 @@ export function createCockroachDbProvider(options) {
     const attempt = Object.freeze({ deadlineMilliseconds, resultPromise });
     inFlightAttempt = attempt;
 
-    // Keep the attempt registered after the outer response timeout. The later
-    // live query executor must enforce its server-side statement timeout and
-    // settle this promise before another query may begin. This prevents a slow
-    // database from accumulating one abandoned query per public health check.
+    // Keep the attempt registered after the outer response timeout. The live
+    // query executor enforces its shorter server and client timeouts and settles
+    // this promise before another query may begin. This prevents a slow database
+    // from accumulating one abandoned query per public health check.
     void resultPromise.then(
       () => {
         if (inFlightAttempt === attempt) {

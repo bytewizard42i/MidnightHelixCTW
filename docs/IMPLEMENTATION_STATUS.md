@@ -1,6 +1,6 @@
 # Implementation status
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 This file is the public truth ledger for MidnightHelixCTW. Update it whenever a
 provider, test, deployment, or evidence claim changes.
@@ -37,7 +37,7 @@ successful output carrying a sanitized real test-service receipt.
 | AgenticDID synthetic authority fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | RWAz synthetic property fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | CockroachDB applied database and schema foundation | LIVE TESTWIRED | Database and schema `mhelix_testwired` are live. Migration `001_testwired_memory_core.sql` was applied, creating 10 tables owned by `mhelix_migrator`. The migrator and runtime users do not inherit `admin`; runtime has database `CONNECT`, schema `USAGE`, and `SELECT` only on the marker table, while `SELECT` on `mhelix_runs` is denied. Exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback. This status proves only the named foundation, activation, and grants. |
-| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | The bounded, single-flight, read-only query seam and canonical marker source commit `48e85b4` exist. An authenticated `mhelix_migrator` session applied the atomic activation from source commit `7a29f22`; all 8 marker comparisons and all 6 ledger comparisons were true in sanitized post-commit readback. The deployed Lambda has no database bootstrap, so the application provider remains `NOT_CONNECTED`. |
+| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | The bounded provider, deployment-only bootstrap, exact existing-secret policy, strict runtime configuration validation, single-flight query, and canonical marker source exist. The currently deployed Lambda has not been updated or publicly verified with this bootstrap, so the application provider remains `NOT_CONNECTED`. |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
 | CockroachDB Managed MCP (Model Context Protocol) | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
@@ -70,9 +70,11 @@ Source commit `7a29f22` contains the reviewed atomic activation. An authenticate
 `mhelix_migrator` session applied it. Sanitized post-commit readback showed
 exactly one canonical marker row, with all 8 comparisons true across the entire
 marker table, and exactly one migration-001 ledger row, with all 6 comparisons
-true. The deployed AWS (Amazon Web Services) Lambda transport has no database
-bootstrap, so the CockroachDB application provider remains `NOT_CONNECTED`.
-Persistent memory, vector retrieval, and Managed MCP (Model Context Protocol)
+true. A reviewed deployment-only bootstrap now exists in source, but the
+currently deployed AWS (Amazon Web Services) Lambda has not been updated or
+publicly verified with it. The CockroachDB application provider therefore
+remains `NOT_CONNECTED`. Persistent memory, vector retrieval, and
+Managed MCP (Model Context Protocol)
 remain unproven and planned. The sanitized evidence is archived in
 [the CockroachDB activation record](archive/cockroachdb/2026-08-15-marker-activation.md).
 

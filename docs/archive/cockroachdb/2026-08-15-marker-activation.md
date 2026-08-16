@@ -35,8 +35,8 @@ checksum, generated receipt, or timestamps.
 ## What this proves
 
 - The reviewed atomic activation was accepted by CockroachDB.
-- Exactly one canonical TestWired environment marker is active.
-- Exactly one ledger row is active for migration 001.
+- Exactly one canonical TestWired environment marker exists in the live foundation database.
+- Exactly one ledger row for migration 001 exists in the live foundation database.
 - The committed marker and migration metadata matched every boolean comparison
   in the reviewed readback.
 

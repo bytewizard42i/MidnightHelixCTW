@@ -1,6 +1,6 @@
 # MHelixCTW Hackathon Roadmap
 
-**Last updated:** August 15, 2026
+**Last updated:** August 16, 2026
 
 **Internal submission target:** Sunday, August 16, 2026, 9:00 PM EDT
 **Official deadline:** Tuesday, August 18, 2026, 5:00 PM EDT
@@ -28,8 +28,8 @@ The release target is one public TestWired application that proves all of the fo
 | Public repository and synthetic fixture baseline | The standalone repository is public and Apache-2.0 licensed; repeat source, fixture, provenance, media, and secret checks at the final release commit. |
 | Judge UI (User Interface) | `LIVE_TESTWIRED`; Amplify serves `main` at `https://testwired.helixctw.com` and its generated address. Hosting and read-only connection are live, while mutation controls remain locked. |
 | AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda | `LIVE_TESTWIRED` for public transport only; the application stack is `CREATE_COMPLETE`, read-only routes respond, and valid operations fail closed because downstream providers are disconnected. |
-| CockroachDB database and schema foundation | `LIVE_TESTWIRED` foundation evidence: database and schema `mhelix_testwired` are live; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; the migrator and runtime users do not inherit `admin`; runtime marker-table access and `mhelix_runs` denial were verified; exactly one canonical marker row and one migration-001 ledger row are active. |
-| CockroachDB connection and TestWired environment probe | `SOURCE_ONLY` probe and `NOT_CONNECTED` runtime: source commit `7a29f22` contains the reviewed atomic activation, which an authenticated `mhelix_migrator` session applied. Sanitized post-commit readback returned all 8 marker comparisons and all 6 ledger comparisons true. The deployed Lambda bootstrap remains absent. |
+| CockroachDB database and schema foundation | `LIVE_TESTWIRED` foundation evidence: database and schema `mhelix_testwired` are live; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; the migrator and runtime users do not inherit `admin`; runtime marker-table access and `mhelix_runs` denial were verified; exactly one canonical marker row and one migration-001 ledger row exist in the live foundation database and passed every sanitized comparison. |
+| CockroachDB connection and TestWired environment probe | `SOURCE_ONLY` probe and `NOT_CONNECTED` runtime: source commit `7a29f22` contains the reviewed atomic activation, which an authenticated `mhelix_migrator` session applied. Sanitized post-commit readback returned all 8 marker comparisons and all 6 ledger comparisons true. The deployment-only bootstrap source is reviewed, but it has not been deployed and its public read-only probe has not been verified. |
 | CockroachDB persistent memory and vector retrieval, Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | `PLANNED` and `NOT_CONNECTED`. |
 | Filecoin encrypted cold evidence | `PLANNED`; it is outside the critical hackathon judge path. The post-submission allocation, Calibration lifecycle, security boundary, and promotion evidence are defined in the [Filecoin integration plan](docs/FILECOIN_INTEGRATION.md). |
 | DIDz, AgenticDID, RWAz | Synthetic fixtures are `MOCK`; callable provider connections remain `NOT_CONNECTED`. |
@@ -114,8 +114,10 @@ transformed OpenAPI server and CORS (Cross-Origin Resource Sharing) defects were
 corrected, a built-template contract was added and validated, and a later
 deployment succeeded. The public UI (User Interface) and read-only transport are
 live. The CockroachDB database and schema foundation is also live and verified,
-but its migration-ledger row, environment-marker row, and deployed Lambda
-bootstrap are absent. CockroachDB, Bedrock, Midnight, reconstruction, and
+and its migration-ledger and environment-marker rows passed sanitized
+post-commit verification. The reviewed Lambda bootstrap exists in source, but
+that bootstrap is absent from the current deployment and its public probe
+remains open. CockroachDB, Bedrock, Midnight, reconstruction, and
 Managed MCP (Model Context Protocol) remain application-disconnected, so
 operational controls remain locked.
 
@@ -126,7 +128,7 @@ operational controls remain locked.
 - [x] Verify separate migrator and runtime users, no `admin` inheritance,
   marker-table access, and denial on `mhelix_runs`.
 - [x] Commit the canonical marker source, invariant tests, and expected digest.
-- [ ] Insert and verify the migration-ledger and environment-marker rows.
+- [x] Insert and verify the migration-ledger and environment-marker rows.
 - [ ] Deploy the reviewed Lambda bootstrap and verify the read-only probe.
 - [ ] Seed exactly one isolated synthetic case.
 - [ ] Generate a real Titan embedding and prove a CockroachDB cosine vector query.

@@ -15,9 +15,10 @@ keeping the other DIDzM (DIDzMonolith) pillars as explicit synthetic providers.
 > authenticated `mhelix_migrator` session applied. Sanitized post-commit
 > readback showed exactly one canonical marker row with all 8 comparisons true
 > across the marker table and exactly one migration-001 ledger row with all 6
-> comparisons true. The read-only probe remains `SOURCE ONLY`, and the deployed
-> Lambda has no database bootstrap. The CockroachDB application provider remains
-> `NOT_CONNECTED`; persistent memory, vector retrieval, and Managed MCP (Model
+> comparisons true. The reviewed read-only bootstrap now exists in source, but
+> the currently deployed Lambda does not contain it. The CockroachDB application
+> provider remains `SOURCE ONLY` and `NOT_CONNECTED`; persistent memory,
+> vector retrieval, and Managed MCP (Model
 > Context Protocol) remain unproven and planned. Bedrock, Midnight, and
 > reconstruction remain `PLANNED` and `NOT_CONNECTED`. The topology below is
 > the target design. See
@@ -98,10 +99,10 @@ Source commit `7a29f22` contains the reviewed atomic activation. An authenticate
 `mhelix_migrator` session applied it. Sanitized post-commit readback showed
 exactly one canonical marker row with all 8 comparisons true across the entire
 marker table and exactly one migration-001 ledger row with all 6 comparisons
-true. The deployed AWS (Amazon Web Services) Lambda transport has no database
-bootstrap. This is live foundation evidence only, not proof of a connected
-provider, persistent memory, vector retrieval, or Managed MCP (Model Context
-Protocol).
+true. The reviewed source includes a deployment-only read probe, but it has
+not been deployed or publicly verified. This is live foundation evidence only,
+not proof of a connected provider, persistent memory, vector retrieval, or
+Managed MCP (Model Context Protocol).
 
 ### Filecoin: planned encrypted cold evidence
 
@@ -141,8 +142,14 @@ the bounded coordinator that:
 6. commits the response evidence and receipt transactionally; and
 7. returns a redacted, size-bounded result.
 
-Secrets will remain in AWS Secrets Manager. The Lambda role will receive only
-the exact database secret, model resources, and logging permissions it requires.
+The reviewed source reads one existing Cockroach runtime secret from
+AWS (Amazon Web Services) Secrets Manager and grants exactly
+`secretsmanager:GetSecretValue` on that secret ARN (Amazon Resource Name). It
+creates no secret, emits no secret output, and adds no KMS (Key Management
+Service) or VPC (Virtual Private Cloud) resource. The existing secret must use
+the AWS (Amazon Web Services) managed `aws/secretsmanager` key unless a separate
+customer-managed KMS (Key Management Service) permission and key-policy review
+is completed.
 
 ### Mock DIDzM (DIDzMonolith) pillars
 
