@@ -1,10 +1,12 @@
 # local-midnight — pinned local Midnight devnet for MidnightHelixCTW
 
-**Status: scaffold only.** The Compose parse, dependency install, type
-check, and contract compile are verified; nothing network-facing has run
-yet, so no capability here may claim `VERIFIED LOCAL` until the supervised
-running-network phase (see
+**Status: `VERIFIED LOCAL`.** On 2026-08-16 the full smoke flow ran twice —
+once on a running chain and once from a clean reset — deploying the
+contract, submitting one randomized commitment, and verifying the ledger
+readback through the indexer (evidence in
 [the rehearsal archive](../docs/archive/midnight/2026-08-16-local-environment-rehearsal.md)).
+This label covers the LOCAL disposable network only; it is never
+`LIVE MIDNIGHT TEST NETWORK`, which requires a public test-network receipt.
 
 This folder gives MidnightHelixCTW a disposable, fully pinned local Midnight
 stack (node + indexer + proof server) plus the smallest useful smoke test:
@@ -49,15 +51,16 @@ npm run net:up             # start the pinned stack, wait for healthy
 npm run smoke              # deploy → 1 tx → ledger readback → receipt
 ```
 
-The driver reads two values from the environment, never from files:
+The driver reads the pre-funded genesis dev seed from the
+`MIDNIGHT_GENESIS_SEED` environment variable only (the value is documented
+in the official midnight-local-dev README). It is never written into
+files, printed, or placed in command history — habit beats leaks. Optional
+variables: `SMOKE_LOG_LEVEL` (pino level, default `warn`) and
+`SMOKE_SOURCE_COMMIT` (stamped into the receipt).
 
-- `MIDNIGHT_GENESIS_SEED` — the pre-funded genesis dev seed (documented in
-  the official midnight-local-dev README);
-- `MIDNIGHT_SMOKE_STATE_PASSWORD` — a throwaway password (16+ characters,
-  3 of 4 character classes) for the local encrypted private-state store.
-
-Seeds and passwords are never written into files here, even dev ones —
-habit beats leaks.
+The run leaves two disposable, git-ignored directories behind:
+`midnight-level-db/` (client private state — wipe together with any chain
+reset) and `logs/` (testkit logger output).
 
 ## One stack at a time (port collision warning)
 

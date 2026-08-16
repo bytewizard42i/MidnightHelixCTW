@@ -1,117 +1,170 @@
-// MidnightHelixCTW local smoke-test driver (scaffold; network steps PROPOSED).
+// MidnightHelixCTW local smoke-test driver.
+//
+// End-to-end proof for the pinned local devnet: build the genesis dev
+// wallet, deploy the compiled smoke contract, submit ONE randomized
+// commitment, read the public ledger back through the indexer, and emit a
+// sanitized JSON receipt. Fail-closed everywhere: any mismatch exits 1.
 //
 // Evidence label ladder (docs/MIDNIGHT_TRUST_BOUNDARY.md): success here is
-// `VERIFIED LOCAL` at most. Steps that require a RUNNING network are marked
-// `PROPOSED` below and have NOT been executed — this scaffold was produced
-// under a no-containers constraint.
+// `VERIFIED LOCAL` at most — a local disposable chain proves mechanics,
+// never `LIVE MIDNIGHT TEST NETWORK`.
 //
-// Interface sources (verified 2026-08-16):
-// - Official guide "Deploying and operating a contract" (Midnight.js 4.1.1),
-//   retrieved via the official Kapa MCP.
-// - Package existence and exact versions verified against the npm registry
-//   (`npm view ... dist-tags`); see
-//   docs/archive/midnight/2026-08-16-local-environment-rehearsal.md.
+// Interface sources (verified 2026-08-16 against the installed exact-pinned
+// packages and current official examples via the official Kapa MCP):
+// - @midnight-ntwrk/testkit-js 4.1.1: FluentWalletBuilder,
+//   MidnightWalletProvider.withWallet, initializeMidnightProviders,
+//   LocalTestConfiguration.
+// - @midnight-ntwrk/midnight-js-contracts 4.1.1: deployContract.
+// - Wallet gotchas from the Midnight Expert wallet plugin references:
+//   (a) we deliberately AVOID MidnightWalletProvider.build() because it
+//       logs the master seed, which our rules forbid printing;
+//   (b) the testkit default DUST options use additionalFeeOverhead: 0n,
+//       which makes the FIRST CONTRACT CALL on an idle devnet compute a
+//       zero fee and be rejected as NotNormalized (error 117) — so we set
+//       a positive overhead via withDustOptions.
 //
-// SAFETY: no seed, key, password, or credential appears in this file. The
-// genesis dev seed is read from the environment at runtime.
+// SAFETY: no seed, key, password, or credential appears in this file or in
+// its output. The genesis dev seed arrives via the process environment.
 
 import { randomBytes } from 'node:crypto';
 import { WebSocket } from 'ws';
 
-// VERIFIED IMPORTS (names match the official 4.1.1 provider guide):
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { deployContract, getPublicStates } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { LedgerParameters, ZswapSecretKeys, DustSecretKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  FluentWalletBuilder,
+  LocalTestConfiguration,
+  MidnightWalletProvider,
+  initializeMidnightProviders,
+} from '@midnight-ntwrk/testkit-js';
+import pino from 'pino';
 
-// Local endpoints — must match standalone.yml exactly.
-const INDEXER_HTTP = 'http://127.0.0.1:8088/api/v4/graphql';
-const INDEXER_WS = 'ws://127.0.0.1:8088/api/v4/graphql/ws';
-const PROOF_SERVER = 'http://127.0.0.1:6300';
+// The generated contract module from `compact compile` (git-ignored output;
+// run `npm run compile:contract` first).
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore -- generated JS module without bundled type resolution for .cjs
+import * as smokeContractModule from './artifacts/smoke_commitment/contract/index.js';
+
 const ZK_ARTIFACTS = new URL('./artifacts/smoke_commitment', import.meta.url).pathname;
+const IMAGE_VERSIONS = { node: '1.0.0', indexer: '4.3.3', proofServer: '8.1.0' };
+const COMPILER_VERSION = '0.31.1';
 
-// Fail-closed helper: any mismatch ends the run with a non-zero exit code.
-function assertOrDie(condition: boolean, message: string): void {
-  if (!condition) {
-    console.error(`SMOKE FAIL (fail-closed): ${message}`);
-    process.exit(1);
-  }
+function fail(message: string): never {
+  console.error(`SMOKE FAIL (fail-closed): ${message}`);
+  process.exit(1);
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString('hex');
 }
 
 async function main(): Promise<void> {
-  // 1. Network identity + WebSocket polyfill (required in Node.js for the
-  //    wallet SDK's indexer subscription; verified in the official guide).
+  // 1. Network identity + WebSocket polyfill for the wallet SDK in Node.
   setNetworkId('undeployed');
   globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
 
-  // 2. Wallet from the pre-funded genesis DEV seed, supplied via env — never
-  //    hardcoded, even though the local dev seed is publicly documented.
-  const genesisSeed = process.env.MIDNIGHT_GENESIS_SEED;
-  assertOrDie(!!genesisSeed, 'MIDNIGHT_GENESIS_SEED is not set (see README)');
+  // Quiet logger: secrets never reach it, and we keep runtime noise down so
+  // the receipt is the last thing on stdout.
+  const logger = pino({ level: process.env.SMOKE_LOG_LEVEL ?? 'warn' });
 
-  // Password for the local encrypted private-state store, also via env
-  // (16+ chars, 3 of 4 character classes — enforced by the provider).
-  const statePassword = process.env.MIDNIGHT_SMOKE_STATE_PASSWORD ?? '';
-  assertOrDie(
-    statePassword.length >= 16,
-    'MIDNIGHT_SMOKE_STATE_PASSWORD is unset or under 16 characters (see README)',
+  // 2. Genesis dev seed from the environment ONLY (never a file/literal).
+  const genesisSeed = process.env.MIDNIGHT_GENESIS_SEED;
+  if (!genesisSeed) fail('MIDNIGHT_GENESIS_SEED is not set (see README)');
+
+  // 3. Environment configuration for the already-running mhelix stack
+  //    (ports must match standalone.yml).
+  const env = new LocalTestConfiguration({ indexer: 8088, node: 9944, proofServer: 6300 });
+
+  // 4. Build the wallet explicitly (not via .build(), which logs the seed).
+  //    Positive additionalFeeOverhead prevents devnet error 117 on the
+  //    first contract call; value follows the official examples.
+  const { wallet, seeds, keystore } = await FluentWalletBuilder.forEnvironment(env)
+    .withDustOptions({
+      ledgerParams: LedgerParameters.initialParameters(),
+      additionalFeeOverhead: 500_000_000_000_000_000n,
+      feeBlocksMargin: 5,
+    })
+    .withSeed(genesisSeed)
+    .buildWithoutStarting();
+
+  const walletProvider = await MidnightWalletProvider.withWallet(
+    logger,
+    env,
+    wallet,
+    ZswapSecretKeys.fromSeed(seeds.shielded),
+    DustSecretKey.fromSeed(seeds.dust),
+    keystore,
   );
 
-  // PROPOSED (needs running network + wallet-sdk 1.2.0 session):
-  //   - build the wallet from the seed with @midnight-ntwrk/wallet-sdk 1.2.0
-  //   - wait for full sync against the indexer
-  //   - ensure DUST registration so the wallet can pay fees
-  //   - derive walletProvider + midnightProvider (submission) from it
-  // Symbol names VERIFIED against the installed 1.2.0 barrel on 2026-08-16:
-  // WalletFacade, WalletSeed, HDWallet, DustWallet, ShieldedWallet,
-  // UnshieldedWallet, generateRandomSeed all exist as exports. The exact
-  // construction/sync sequence remains PROPOSED until it can be executed
-  // against a running network and checked against the official guide.
+  // 5. Start + sync; waitForFunds inside start() also self-registers the
+  //    genesis NIGHT UTXOs for DUST generation when DUST balance is zero.
+  await walletProvider.start(true);
 
-  // 3. The six providers (shapes verified against the official 4.1.1 guide).
-  const zkConfigProvider = new NodeZkConfigProvider<'recordCommitment'>(ZK_ARTIFACTS);
-  const providers = {
-    privateStateProvider: levelPrivateStateProvider({
-      privateStateStoreName: 'mhelix-smoke-private-state',
-      signingKeyStoreName: 'mhelix-smoke-signing-keys',
-      // 16+ chars, 3 character classes — enforced at runtime by the provider.
-      // Supplied via env: the task queue forbids ANY password literal in
-      // candidate files, even a dev-only one for a disposable local store.
-      privateStoragePasswordProvider: () => statePassword,
-      accountId: 'REPLACED-BY-WALLET-ADDRESS-AT-RUNTIME',
-    }),
-    publicDataProvider: indexerPublicDataProvider(INDEXER_HTTP, INDEXER_WS),
-    zkConfigProvider,
-    proofProvider: httpClientProofProvider(PROOF_SERVER, zkConfigProvider),
-    // walletProvider / midnightProvider: PROPOSED, see step 2.
+  // 6. Assemble the six Midnight.js providers with the testkit helper
+  //    (private state store name doubles as the levelDB directory prefix).
+  const providers = initializeMidnightProviders<'recordCommitment', Record<string, never>>(
+    walletProvider,
+    env,
+    { privateStateStoreName: `mhelix-smoke-${Date.now()}`, zkConfigPath: ZK_ARTIFACTS },
+  );
+
+  // 7. Build the CompiledContract with the official fluent pattern (matches
+  //    example-hello-world and the testkit e2e suite): no witnesses, assets
+  //    from the compile output directory. Then deploy.
+  const compiledSmokeContract = CompiledContract.make(
+    'MhelixSmokeCommitment',
+    smokeContractModule.Contract,
+  ).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets(ZK_ARTIFACTS),
+  );
+  const deployed = await deployContract(providers, {
+    compiledContract: compiledSmokeContract,
+  });
+  const contractAddress = deployed.deployTxData.public.contractAddress;
+
+  // 8. ONE fresh randomized 32-byte commitment, submitted on-chain.
+  const commitment = new Uint8Array(randomBytes(32));
+  const callResult = await deployed.callTx.recordCommitment(commitment);
+  const txData = callResult.public;
+
+  // 9. Ledger readback THROUGH THE INDEXER (not from the tx result):
+  //    query the contract state and decode it with the generated ledger()
+  //    reader, then fail closed on any mismatch.
+  const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
+  if (contractState == null) fail('indexer returned no contract state');
+  const ledgerState = smokeContractModule.ledger(contractState.data);
+
+  const countOk = ledgerState.commitmentCount === 1n;
+  const readBackHex = toHex(ledgerState.latestCommitment);
+  const commitmentOk = readBackHex === toHex(commitment);
+  if (!countOk) fail(`commitmentCount is ${ledgerState.commitmentCount}, expected exactly 1`);
+  if (!commitmentOk) fail('ledger latestCommitment does not match the submitted commitment');
+
+  // 10. Sanitized receipt — ONLY public, non-reconstructible facts.
+  const receipt = {
+    label: 'VERIFIED LOCAL',
+    networkId: 'undeployed',
+    contractAddress,
+    txId: txData.txId,
+    blockHeight: txData.blockHeight,
+    circuit: 'recordCommitment',
+    publicCommitmentHex: readBackHex,
+    checks: { commitmentCountIsOne: countOk, commitmentMatches: commitmentOk },
+    sourceCommit: process.env.SMOKE_SOURCE_COMMIT ?? 'unset',
+    compiler: COMPILER_VERSION,
+    images: IMAGE_VERSIONS,
+    timestamp: new Date().toISOString(),
   };
+  console.log(JSON.stringify(receipt, null, 2));
 
-  // 4. PROPOSED (needs running network): deploy the compiled contract.
-  //   const deployed = await deployContract(providers, {
-  //     compiledContract,            // from artifacts/smoke_commitment
-  //     privateStateId: 'mhelix-smoke',
-  //   });
-
-  // 5. PROPOSED (needs running network): one randomized commitment tx.
-  //   const commitment = randomBytes(32);          // opaque by construction
-  //   const result = await deployed.callTx.recordCommitment(commitment);
-
-  // 6. PROPOSED (needs running network): ledger readback + fail-closed check.
-  //   const publicStates = await getPublicStates(providers, deployed.deployTxData.public.contractAddress);
-  //   assertOrDie(ledgerState.commitmentCount === 1n, 'commitmentCount != 1');
-  //   assertOrDie(equalBytes(ledgerState.latestCommitment, commitment), 'commitment mismatch');
-
-  // 7. PROPOSED: emit sanitized evidence receipt (no secrets, ever):
-  //   { networkId, contractAddress, txId, blockHeight, circuit: 'recordCommitment',
-  //     compiler: '0.31.1', images: { node: '1.0.0', indexer: '4.3.3', proof: '8.1.0' },
-  //     commitmentHex, timestamp }
-
-  console.log('Rehearsal driver: providers assembled; network steps remain PROPOSED.');
+  await walletProvider.stop();
+  process.exit(0);
 }
 
 main().catch((error) => {
-  console.error('SMOKE FAIL (fail-closed):', error);
-  process.exit(1);
+  // Never dump full objects (they can embed wallet internals); message only.
+  fail(error instanceof Error ? error.message : String(error));
 });

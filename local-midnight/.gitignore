@@ -1,6 +1,10 @@
-# Client-side private state (LevelDB store used by levelPrivateStateProvider).
-# Contains signing keys and private contract state — never commit.
+# Client-side private state (LevelDB stores created by the private-state
+# provider). Contains signing keys and private contract state — never commit.
 .state/
+midnight-level-db/
+
+# testkit-js default logger output directory.
+logs/
 
 # Compiler output: proving/verifying keys, ZK IR, generated JS. Rebuildable
 # from the contract source with `compact compile`; large and never committed.
