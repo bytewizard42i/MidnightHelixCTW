@@ -369,10 +369,10 @@ test("lazy bootstrap is single-flight, destroys clients, and refreshes after TTL
   assert.deepEqual(proofs, [proof, proof, proof]);
   assert.equal(executorOptions[0].database, "mhelix_testwired");
   assert.equal(executorOptions[0].user, "mhelix_runtime");
-  assert.equal(executorOptions[0].connectionTimeoutMilliseconds, 250);
-  assert.equal(executorOptions[0].statementTimeoutMilliseconds, 700);
-  assert.equal(executorOptions[0].queryTimeoutMilliseconds, 950);
-  assert.equal(executorOptions[0].probeTimeoutMilliseconds, 1_500);
+  assert.equal(executorOptions[0].connectionTimeoutMilliseconds, 1_500);
+  assert.equal(executorOptions[0].statementTimeoutMilliseconds, 1_000);
+  assert.equal(executorOptions[0].queryTimeoutMilliseconds, 2_000);
+  assert.equal(executorOptions[0].probeTimeoutMilliseconds, 4_000);
   assert.ok(
     executorOptions[0].connectionTimeoutMilliseconds +
       executorOptions[0].queryTimeoutMilliseconds <=
@@ -381,7 +381,8 @@ test("lazy bootstrap is single-flight, destroys clients, and refreshes after TTL
   assert.equal(providerOptions[0].expectedDatabaseName, "mhelix_testwired");
   assert.equal(providerOptions[0].expectedRuntimeUser, "mhelix_runtime");
   assert.match(providerOptions[0].expectedMarkerCommitmentHex, /^[0-9a-f]{64}$/);
-  assert.equal(providerOptions[0].statementTimeoutMilliseconds, 700);
+  assert.equal(providerOptions[0].statementTimeoutMilliseconds, 1_000);
+  assert.equal(providerOptions[0].probeTimeoutMilliseconds, 4_000);
 
   currentTime += 4_999;
   await lazyProvider.probe();

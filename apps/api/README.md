@@ -42,10 +42,13 @@ exactly one canonical environment-marker row with all 8 comparisons true
 across the entire marker table, plus exactly one migration-001 ledger row with
 all 6 comparisons true.
 
-The reviewed source now includes a deployment-only bootstrap, but that source
-has not yet been deployed and publicly verified. The currently deployed
-AWS (Amazon Web Services) Lambda release therefore remains database-disconnected
-and the CockroachDB application provider remains `NOT_CONNECTED`.
+The deployment-only bootstrap is now deployed: release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4` runs `src/lambda.handler`, and the
+public `/api/v1/status` route reads the bounded read-only environment-marker
+probe back as `REALDEAL_TEST` and `CONNECTED`. That evidence covers the
+connection, runtime identity, and reviewed TestWired marker only. Persistent
+memory, vector retrieval, and mutations remain unavailable, and the overall
+application remains `NOT_CONNECTED` with `readyForMutations` false.
 
 `createHandler({ cockroachProvider })` accepts an injected, read-only provider
 for the health, status, and scenario routes. `src/lambda.js` supplies that
