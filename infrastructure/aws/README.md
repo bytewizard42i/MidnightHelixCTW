@@ -27,15 +27,21 @@ A response running inside the validated AWS (Amazon Web Services) Lambda
 environment marks only the AWS (Amazon Web Services) transport row
 `REALDEAL_TEST` and `CONNECTED`.
 The `mhelixctw-testwired` AWS (Amazon Web Services) application stack is
-`CREATE_COMPLETE`, and its generated
+`UPDATE_COMPLETE` at release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4` with handler `src/lambda.handler`,
+and its generated
 API (Application Programming Interface) address is
-<https://iyoshkil91.execute-api.us-east-1.amazonaws.com>.
+<https://iyoshkil91.execute-api.us-east-1.amazonaws.com>. The deployed
+release carries the reviewed read-only CockroachDB bootstrap, and the public
+bounded environment-marker probe reads back `REALDEAL_TEST` and `CONNECTED`
+([evidence record](../../docs/archive/aws/2026-08-16-live-probe-deployment.md)).
 
 Amplify application `d23ghemtd40rom` serves branch `main` at the generated
 origin <https://main.d23ghemtd40rom.amplifyapp.com> and the custom
 UI (User Interface) address <https://testwired.helixctw.com>. This promotes only
 public hosting and AWS (Amazon Web Services) transport. The global
-`deploymentEvidence` value remains `SOURCE_ONLY`; CockroachDB, AWS (Amazon Web Services) Bedrock, Midnight,
+`deploymentEvidence` value remains `SOURCE_ONLY`; CockroachDB application
+memory, AWS (Amazon Web Services) Bedrock, Midnight,
 Managed MCP (Model Context Protocol), and the fixture providers remain
 disconnected. Valid mutation
 requests return `503 LIVE_PROVIDERS_NOT_CONNECTED` and fail closed.

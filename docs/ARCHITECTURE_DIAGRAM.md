@@ -46,15 +46,18 @@ flowchart LR
 | Custom UI (User Interface) | <https://testwired.helixctw.com> |
 | CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback. |
 
-Only the AWS (Amazon Web Services) transport and public UI (User Interface)
-hosting are application-connected. CockroachDB has a verified live schema
-foundation, least-privilege migrator and runtime users, and a committed
+The AWS (Amazon Web Services) transport, the public UI (User Interface)
+hosting, and the bounded read-only CockroachDB environment probe are
+application-connected. CockroachDB has a verified live schema foundation,
+least-privilege migrator and runtime users, and a committed
 environment-marker contract. An authenticated `mhelix_migrator` session
-applied the reviewed atomic activation from source commit `7a29f22`. A
-read-only bootstrap is reviewed in source, but it remains absent from the
-current deployment and has no public probe evidence. The CockroachDB application provider,
-AWS (Amazon Web Services) Bedrock, Midnight, and Managed MCP (Model Context
-Protocol) remain `NOT_CONNECTED`. Valid mutations return
+applied the reviewed atomic activation from source commit `7a29f22`. The
+reviewed read-only bootstrap is deployed at release
+`cd1d6c74c1d8cd440ce5659b37371fb824343ea4`, and the public probe reads back
+`REALDEAL_TEST` and `CONNECTED` for the connection, runtime identity, and
+marker only. CockroachDB application memory, AWS (Amazon Web Services)
+Bedrock, Midnight, and Managed MCP (Model Context Protocol) remain
+`NOT_CONNECTED`. Valid mutations return
 `503 LIVE_PROVIDERS_NOT_CONNECTED` and fail closed, so the global
 `deploymentEvidence` value remains `SOURCE_ONLY`.
 

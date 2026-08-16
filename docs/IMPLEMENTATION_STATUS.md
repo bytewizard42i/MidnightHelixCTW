@@ -37,11 +37,11 @@ successful output carrying a sanitized real test-service receipt.
 | AgenticDID synthetic authority fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | RWAz synthetic property fixture | MOCK | The root fixture verifier passes; the callable mock provider is not connected. |
 | CockroachDB applied database and schema foundation | LIVE TESTWIRED | Database and schema `mhelix_testwired` are live. Migration `001_testwired_memory_core.sql` was applied, creating 10 tables owned by `mhelix_migrator`. The migrator and runtime users do not inherit `admin`; runtime has database `CONNECT`, schema `USAGE`, and `SELECT` only on the marker table, while `SELECT` on `mhelix_runs` is denied. Exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback. This status proves only the named foundation, activation, and grants. |
-| CockroachDB Cloud connection and TestWired environment probe | SOURCE ONLY | The bounded provider, deployment-only bootstrap, exact existing-secret policy, strict runtime configuration validation, single-flight query, and canonical marker source exist. The currently deployed Lambda has not been updated or publicly verified with this bootstrap, so the application provider remains `NOT_CONNECTED`. |
+| CockroachDB Cloud connection and TestWired environment probe | REALDEAL_TEST | The deployed Helix Runtime Bridge (AWS (Amazon Web Services) Lambda) release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` carries the reviewed read-only bootstrap, and the public `/api/v1/status` route reads the bounded environment-marker probe back as `REALDEAL_TEST` and `CONNECTED` with a sanitized evidence receipt identifier. The probe proves the connection, runtime identity, and reviewed TestWired marker only. It neither proves nor enables memory persistence, vector retrieval, Managed MCP (Model Context Protocol), or mutations; the overall application remains `NOT_CONNECTED` and `readyForMutations` remains `false`. Evidence: [the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md). |
 | CockroachDB Cloud memory | PLANNED | New session writes, new Lambda process recalls, and live rows/receipts are visible. |
 | CockroachDB vector retrieval | PLANNED | Real Titan embedding, stored vector, semantic query, distance, and query-plan evidence. |
 | CockroachDB Managed MCP (Model Context Protocol) | PLANNED | Read-only cluster-scoped inspection with a redacted judge receipt. |
-| AWS (Amazon Web Services) Lambda and Amazon API (Application Programming Interface) Gateway | LIVE TESTWIRED | The `mhelixctw-testwired` stack is `CREATE_COMPLETE` at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`; its generated address is `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. Read-only routes, exact-origin CORS (Cross-Origin Resource Sharing), and the fail-closed mutation check passed. This promotion applies only to cloud transport; downstream providers remain `NOT_CONNECTED`. |
+| AWS (Amazon Web Services) Lambda and Amazon API (Application Programming Interface) Gateway | LIVE TESTWIRED | The `mhelixctw-testwired` stack (first created at release `578d565049e6d177c4b6fae4bb69fe4a2337173f`) is now `UPDATE_COMPLETE` at release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` with handler `src/lambda.handler`; its generated address is `https://iyoshkil91.execute-api.us-east-1.amazonaws.com`. The public read-only smoke contract passed for health, status, scenarios, exact-origin CORS (Cross-Origin Resource Sharing), release identity, and a denied mutation. This promotion applies only to cloud transport plus the bounded read-only database probe; all other downstream providers remain `NOT_CONNECTED`. |
 | AWS Bedrock Titan | PLANNED | Live model ID, dimensions, request metadata, and stored vector evidence. |
 | Midnight test network | PLANNED | Real network name, contract/circuit version, transaction identifier, and explorer or query evidence. |
 | Filecoin encrypted cold evidence | PLANNED | The [integration plan](FILECOIN_INTEGRATION.md) is documentation only. Promotion requires an explicit Calibration configuration, a bounded encrypted upload, a sanitized PieceCID (Piece Content Identifier) and storage receipt, a CockroachDB manifest and outbox record, successful retrieval with digest and commitment verification, Midnight receipt binding, and negative tamper and authorization results. |
@@ -51,9 +51,38 @@ successful output carrying a sanitized real test-service receipt.
 The CockroachDB `LIVE TESTWIRED` foundation row is live service evidence only
 for the applied migration, schema objects, marker activation, ownership, and
 narrow grants.
-The `SOURCE ONLY` probe row remains source evidence, and the application runtime
-remains `NOT_CONNECTED`. Neither row proves persistent memory, vector indexing
-or retrieval, Managed MCP (Model Context Protocol), or mutation readiness.
+The `REALDEAL_TEST` probe row is live evidence for the bounded read-only
+environment probe only, and the overall application remains `NOT_CONNECTED`.
+Neither row proves persistent memory, vector indexing or retrieval,
+Managed MCP (Model Context Protocol), or mutation readiness.
+
+### 2026-08-16 live read-only probe deployment checkpoint
+
+The Helix Runtime Bridge (AWS (Amazon Web Services) Lambda) was updated to
+release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` with handler
+`src/lambda.handler`; the CloudFormation stack reached `UPDATE_COMPLETE`. The
+runtime reads exactly one existing AWS (Amazon Web Services) Secrets Manager
+secret through one exact `secretsmanager:GetSecretValue` permission, with no
+wildcard secret access and no KMS (Key Management Service) decrypt permission.
+No secret value, host, certificate, password, or ARN (Amazon Resource Name)
+appears in Git, documentation, logs, or evidence.
+
+The public read-only smoke contract passed: health, status, scenarios,
+exact-origin CORS (Cross-Origin Resource Sharing), release identity, and a
+denied mutation returning HTTP (Hypertext Transfer Protocol) 503 with
+`LIVE_PROVIDERS_NOT_CONNECTED`. The public `/api/v1/status` route now reports
+the CockroachDB provider as `REALDEAL_TEST` and `CONNECTED`, carrying a
+sanitized evidence receipt identifier and the exact boundary sentence that the
+bounded read-only query verified the connection, runtime identity, and
+reviewed TestWired environment marker without proving or enabling memory
+persistence or vector retrieval.
+
+This checkpoint promotes exactly two things: the deployed transport release
+and the bounded read-only environment probe. It does not promote memory,
+vectors, capability activation, Managed MCP (Model Context Protocol), Bedrock,
+Midnight, or mutations. `readyForMutations` remains `false` and the overall
+application remains `NOT_CONNECTED`. Sanitized evidence:
+[the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md).
 
 ### 2026-08-15 CockroachDB foundation checkpoint
 
@@ -70,12 +99,10 @@ Source commit `7a29f22` contains the reviewed atomic activation. An authenticate
 `mhelix_migrator` session applied it. Sanitized post-commit readback showed
 exactly one canonical marker row, with all 8 comparisons true across the entire
 marker table, and exactly one migration-001 ledger row, with all 6 comparisons
-true. A reviewed deployment-only bootstrap now exists in source, but the
-currently deployed AWS (Amazon Web Services) Lambda has not been updated or
-publicly verified with it. The CockroachDB application provider therefore
-remains `NOT_CONNECTED`. Persistent memory, vector retrieval, and
-Managed MCP (Model Context Protocol)
-remain unproven and planned. The sanitized evidence is archived in
+true. The reviewed deployment-only bootstrap has since been deployed and
+publicly verified — see the dated 2026-08-16 checkpoint below. Persistent
+memory, vector retrieval, and Managed MCP (Model Context Protocol) remain
+unproven and planned. The sanitized activation evidence is archived in
 [the CockroachDB activation record](archive/cockroachdb/2026-08-15-marker-activation.md).
 
 `MOCK` in these rows describes deterministic fixture evidence. The Phase 1 API
