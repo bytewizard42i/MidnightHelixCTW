@@ -1,0 +1,48 @@
+{
+  "name": "@midnight-helixctw/local-midnight",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Pinned local Midnight devnet + smoke test for MidnightHelixCTW (candidate rehearsal).",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preflight": "node scripts/preflight-node.mjs",
+    "compile:contract": "npm run preflight && compact compile contracts/smoke_commitment.compact artifacts/smoke_commitment",
+    "net:up": "docker compose -f standalone.yml up -d && bash scripts/wait-healthy.sh",
+    "net:ps": "docker compose -f standalone.yml ps",
+    "net:logs": "docker compose -f standalone.yml logs -f",
+    "net:down": "docker compose -f standalone.yml down --remove-orphans",
+    "net:reset": "npm run net:down && npm run state:archive && npm run net:up",
+    "state:archive": "bash scripts/archive-state.sh",
+    "test:archive": "bash scripts/test-archive-state.sh",
+    "smoke": "npm run preflight && node --experimental-strip-types smoke-test.mts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
+    "@midnight-ntwrk/testkit-js": "4.1.1",
+    "@midnight-ntwrk/wallet-sdk": "1.2.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "3.1.2",
+    "pino": "10.1.0",
+    "ws": "8.18.3"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.0.1",
+    "@types/ws": "8.18.1",
+    "typescript": "5.9.3"
+  }
+}
