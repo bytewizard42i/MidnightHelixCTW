@@ -29,10 +29,14 @@ const HOST_PATTERN =
   /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.cockroachlabs\.cloud$/;
 const ARN_PATTERN =
   /^arn:aws:secretsmanager:us-east-1:[0-9]{12}:secret:[A-Za-z0-9/_+=.@-]{1,512}-[A-Za-z0-9]{6}$/;
-const CONNECTION_TIMEOUT_MILLISECONDS = 250;
-const STATEMENT_TIMEOUT_MILLISECONDS = 700;
-const QUERY_TIMEOUT_MILLISECONDS = 950;
-const PROBE_TIMEOUT_MILLISECONDS = 1_500;
+// A new Transport Layer Security database connection can take longer than a
+// quarter second even when the database is healthy. Keep enough room for the
+// connection handshake and one bounded read while remaining well inside the
+// Helix Runtime Bridge (AWS Lambda) ten-second execution limit.
+const CONNECTION_TIMEOUT_MILLISECONDS = 1_500;
+const STATEMENT_TIMEOUT_MILLISECONDS = 1_000;
+const QUERY_TIMEOUT_MILLISECONDS = 2_000;
+const PROBE_TIMEOUT_MILLISECONDS = 4_000;
 
 function requireObject(value, label) {
   if (
