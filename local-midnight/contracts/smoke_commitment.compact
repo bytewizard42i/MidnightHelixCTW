@@ -1,0 +1,27 @@
+// MidnightHelixCTW smoke contract.
+//
+// The smallest useful loop-prover: record one opaque 32-byte commitment and
+// count how many have been recorded. It mirrors the eventual real shape
+// (a commitment registry) without touching any real or private data.
+// The contract never sees the committed value — only the caller-supplied
+// randomized commitment, which is safe to publish by construction.
+
+pragma language_version >= 0.22 && <= 0.23;
+
+import CompactStandardLibrary;
+
+// Total number of commitments recorded (public, monotonically increasing).
+export ledger commitmentCount: Counter;
+
+// The most recently recorded 32-byte commitment (public, opaque).
+export ledger latestCommitment: Bytes<32>;
+
+// Record one opaque commitment on the public ledger.
+// Circuit parameters are private (witness) data by default in Compact, so
+// writing the parameter to a public ledger field requires an explicit
+// disclose(), which documents that publishing it is intentional and safe:
+// the value is already a randomized commitment, not evidence.
+export circuit recordCommitment(commitment: Bytes<32>): [] {
+  latestCommitment = disclose(commitment);
+  commitmentCount.increment(1);
+}

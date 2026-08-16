@@ -1,0 +1,17 @@
+# Client-side private state (LevelDB store used by levelPrivateStateProvider).
+# Contains signing keys and private contract state — never commit.
+.state/
+
+# Compiler output: proving/verifying keys, ZK IR, generated JS. Rebuildable
+# from the contract source with `compact compile`; large and never committed.
+artifacts/
+
+# Local environment overrides (only the .example file is committed).
+.env
+*.env.local
+
+# Node dependencies.
+node_modules/
+
+# Sanitized run evidence is reviewed before any commit; raw logs stay local.
+*.log

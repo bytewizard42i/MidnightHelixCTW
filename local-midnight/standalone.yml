@@ -1,0 +1,82 @@
+# MidnightHelixCTW — pinned local Midnight devnet
+#
+# Local development ONLY. Every value in here is a published development-only
+# default from the official Midnight docs / midnight-local-dev repository.
+# Nothing in this file is a real credential, and every port binds to
+# 127.0.0.1 so nothing is reachable from outside this machine.
+#
+# Pins verified 2026-08-16 against the official compatibility matrix
+# (retrieved via the official Kapa MCP) and the official local-network
+# example (ZK Loan / midnight-local-dev). Local image digests recorded in
+# docs/archive/midnight/2026-08-16-local-environment-rehearsal.md.
+# Never use ':latest' tags here.
+
+# Explicit Compose project name, unique to MidnightHelixCTW, so this stack
+# can never be confused with (or torn down alongside) any other compose
+# project on this machine.
+name: mhelix-local-midnight
+
+services:
+  node:
+    # The Midnight blockchain node itself, running the instant 'dev' chain
+    # preset. The official LOCAL example pins 1.0.0 even though the public
+    # networks run 1.0.1 — local pins follow the local example on purpose.
+    image: 'midnightntwrk/midnight-node:1.0.0'
+    container_name: 'mhelix-midnight-node'
+    ports:
+      - '127.0.0.1:9944:9944' # RPC endpoint (HTTP GET /health + WebSocket)
+    environment:
+      CFG_PRESET: 'dev' # dev chain preset: instant blocks, pre-funded genesis
+      # Published dev-preset beneficiary key from the official compose.
+      # Development-only literal; meaningless outside the disposable chain.
+      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
+    healthcheck:
+      # curl -f fails (non-zero exit) on any HTTP error, which is exactly
+      # what a healthcheck needs. The node image ships curl.
+      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  indexer:
+    # The indexer follows the chain and serves a GraphQL API that DApps and
+    # wallets query instead of talking to the node directly.
+    image: 'midnightntwrk/indexer-standalone:4.3.3'
+    container_name: 'mhelix-midnight-indexer'
+    env_file: standalone.env.example # dev-only placeholder values, see file
+    ports:
+      - '127.0.0.1:8088:8088' # GraphQL: /api/v4/graphql (HTTP) and /ws
+    environment:
+      RUST_LOG: 'indexer=info,chain_indexer=info,indexer_api=info,wallet_indexer=info,indexer_common=info,fastrace_opentelemetry=off,info'
+      APP__APPLICATION__NETWORK_ID: 'undeployed' # the local network id
+    healthcheck:
+      # The image writes this marker file once it is actually serving.
+      test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      node:
+        condition: service_healthy # startup order: node first, then indexer
+
+  proof-server:
+    # Generates the zero-knowledge proofs for transactions. Independent of
+    # the chain, so it has no depends_on and can start in parallel.
+    # RAM note: proving can want 2-4+ GiB; do not run during Clara's lane.
+    image: 'midnightntwrk/proof-server:8.1.0'
+    container_name: 'mhelix-midnight-proof-server'
+    command: ['midnight-proof-server', '-v']
+    ports:
+      - '127.0.0.1:6300:6300' # proving API + GET /health
+    environment:
+      RUST_BACKTRACE: 'full'
+    healthcheck:
+      # Opens a bare TCP connection using bash's /dev/tcp feature; succeeds
+      # only if something is listening on 6300 (image has no curl).
+      test: ['CMD-SHELL', 'echo > /dev/tcp/127.0.0.1/6300']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
