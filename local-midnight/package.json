@@ -16,6 +16,7 @@
     "net:down": "docker compose -f standalone.yml down --remove-orphans",
     "net:reset": "npm run net:down && npm run state:archive && npm run net:up",
     "state:archive": "bash scripts/archive-state.sh",
+    "test:archive": "bash scripts/test-archive-state.sh",
     "smoke": "npm run preflight && node --experimental-strip-types smoke-test.mts",
     "typecheck": "tsc --noEmit"
   },
