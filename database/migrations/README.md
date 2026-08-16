@@ -1,22 +1,29 @@
 # CockroachDB Migrations
 
-The first additive source migration is:
+The additive source migrations are:
 
 1. `001_testwired_memory_core.sql`, environment proof, synthetic case
    namespaces, independent judge runs, run-scoped sessions, typed public-safe
    events, event-anchored summaries, projection generations, an active pointer,
    and run-bound idempotent action receipts with an exact operation allowlist.
+2. `002_testwired_vector_memory.sql`, the vector-memory recall slice: a
+   release-bound runtime capability marker, run-specific active projection
+   bindings, privacy-safe summary embeddings in `VECTOR(8)` with a
+   cosine-optimized vector index, immutable ranked recall-result items, and an
+   additive transport request identifier on action receipts. **Migration 002 is
+   `SOURCE_ONLY`: it has never been applied, and no grant, capability row, or
+   vector query has been executed.**
 
 Every object belongs to the dedicated mhelix_testwired schema. Table creation,
 index targets, foreign-key targets, and the runtime marker query are explicitly
 qualified, so correctness does not depend on the connection's database search
 path.
 
-It deliberately contains no destructive DDL (Data Definition Language), user or
-privilege creation, seed data, vector column, or live connection step.
-Distributed vector persistence and indexing remain a separately reviewed
-additive migration after the embedding model and current CockroachDB index
-syntax are verified.
+Both migrations deliberately contain no destructive DDL (Data Definition
+Language), user or privilege creation, seed data, or live connection step.
+Migration 001 contains no vector column; distributed vector persistence and
+indexing were deferred until the embedding model and the current CockroachDB
+index syntax were verified, which is what migration 002 now records in source.
 
 The standalone migration ledger is designed to cover:
 
@@ -166,3 +173,145 @@ single-transaction plain-INSERT rule, and the no-echo rule. Committing these
 files is source evidence only; only a separately authenticated
 `mhelix_migrator` session may apply them, and the read-back booleans plus a
 sanitized transcript are the activation evidence.
+
+## Migration 002: vector-memory recall slice (`SOURCE_ONLY`)
+
+`002_testwired_vector_memory.sql` is committed reviewed source. **It has not
+been applied.** No vector row exists, no grant has been executed, no capability
+row has been inserted, and no vector query or query plan has been observed.
+Committing it proves nothing about the live database.
+
+### What it adds
+
+| Object | Purpose |
+| --- | --- |
+| `mhelix_runtime_capabilities` | Release-bound runtime capability marker. Its primary key is `(capability_id, release_commit)`, so a capability is always bound to one exact 40-character release commit and a stale deployment cannot claim a newer capability. A `CHECK` keeps `public_mutations_enabled` false, so public mutations remain impossible at the schema level. |
+| `mhelix_run_active_projections` | Run-specific active projection binding. Migration 001 pins one active projection per case namespace; recall additionally pins one per independent judge run, so two runs in one case cannot silently read each other's generation. |
+| `mhelix_memory_summary_embeddings` | Privacy-safe summary embeddings: reference columns, one `VECTOR(8)` embedding, a fixed model identifier, a 32-byte embedding commitment, and audit fields. |
+| `mhelix_recall_result_items` | Immutable ranked recall-result items bound to the action receipt that produced them, so a receipt can reproduce the exact stored evidence references. |
+| `uq_mhelix_memory_summaries_session_summary` | Additive unique index on the existing summaries table. It adds no column and changes no existing definition; it exists so the embedding table can carry a real composite foreign key proving a summary belongs to its session. |
+| `transport_request_id` | Additive nullable column on `mhelix_action_receipts`, reusing the exact request-identifier pattern already validated in `apps/api/src/handler.js`. It is nullable because migration 001 receipts predate it, and a fabricated default would be dishonest evidence. |
+
+### The privacy rule for the vector table
+
+The embedding table stores only references to already-public-safe summaries, an
+eight-dimensional embedding, a fixed model identifier, a 32-byte commitment,
+and ordinary audit fields. It must never carry raw protected source text,
+identity records, deeds, mortgages, owner data, credentials, private witnesses,
+encryption keys, Filecoin payloads, or protected document bytes. There is
+deliberately no free-text content column, and the source-contract test rejects
+one if it is ever added.
+
+The fixed model identifier is `mhelixctw-synthetic-embedding-v1`, a
+deterministic synthetic embedding for this proof of concept. It is deliberately
+**not** an AWS (Amazon Web Services) Bedrock Titan identifier: Titan does not
+emit eight-dimensional vectors, so naming it here would be a false claim. Real
+Titan embeddings would require their own reviewed migration to change the
+declared dimension.
+
+### Apply-time prerequisites that this source does not perform
+
+1. **Cluster setting.** Creating a vector index requires
+   `feature.vector_index.enabled = true`
+   ([official documentation](https://www.cockroachlabs.com/docs/v26.2/vector-indexes#enable-vector-indexes)).
+   Migration 002 deliberately does not set it, because changing a cluster
+   setting is a separate explicitly authorized live operation. If the setting
+   is disabled, the embedding-table statement fails, which is the intended
+   fail-closed behavior rather than silently creating an unindexed table.
+2. **Ledger row.** `database/activation/002_testwired_vector_memory_activation.sql`
+   inserts exactly one migration-ledger row in one plain-`INSERT` transaction,
+   with no `UPSERT` and no `ON CONFLICT`. A conflict is a fail-closed review
+   event.
+3. **Grants.** `database/activation/002_testwired_vector_memory_grants.sql`
+   grants table-level `SELECT`, `INSERT`, and narrow `UPDATE` only, with no
+   grant option and no wildcard target.
+4. **Read-back.** `database/activation/verify_vector_memory_activation.sql`
+   returns booleans only, so an evidence transcript never contains a stored
+   embedding, commitment, or summary.
+
+### Why no capability row is committed
+
+The runtime capability marker is release-bound: inserting it requires the exact
+40-character release commit being activated and that release's 32-byte evidence
+commitment. **A committed file cannot contain the hash of the commit that will
+contain it**, so any release commit written into committed source would
+necessarily be fabricated or stale. The authorized operator therefore inserts
+the capability row at activation time, from this reviewed template, replacing
+both angle-bracket placeholders with real values. The placeholders below are
+documentation and are intentionally not valid SQL (Structured Query Language)
+literals, so this block can never be pasted unmodified:
+
+```sql
+BEGIN;
+
+INSERT INTO mhelix_testwired.mhelix_runtime_capabilities
+  (capability_id, marker_id, release_commit, capability_state,
+   capability_version, evidence_commitment)
+VALUES
+  ('vector_memory_recall',
+   'mhelixctw-testwired-environment',
+   <RELEASE_COMMIT_40_LOWERCASE_HEX>,
+   'SOURCE_ONLY',
+   1,
+   decode(<EVIDENCE_COMMITMENT_64_LOWERCASE_HEX>, 'hex'));
+
+COMMIT;
+```
+
+`capability_state` must never be promoted past the evidence that exists.
+`LIVE_TESTWIRED` requires a real applied migration, real grants, a real stored
+vector, a real recall, and a sanitized transcript.
+
+### The intended recall query
+
+The reviewed recall shape constrains both vector-index prefix columns to exact
+values, orders by cosine distance, and is bounded to two candidates:
+
+```sql
+SELECT memory_summary_id,
+       embedding <=> $3 AS cosine_distance
+  FROM mhelix_testwired.mhelix_memory_summary_embeddings
+ WHERE run_id = $1
+   AND projection_generation_id = $2
+ ORDER BY embedding <=> $3
+ LIMIT 2;
+```
+
+A vector index is only usable when every prefix column is constrained to an
+exact value, which this shape satisfies
+([official documentation](https://www.cockroachlabs.com/docs/v26.2/vector-indexes#define-prefix-columns)).
+**No index-use claim is made.** Whether the optimizer actually uses
+`vec_mhelix_summary_embeddings_run_projection` is proven only by a live
+`EXPLAIN` showing a vector search node with prefix spans. Until that plan
+evidence exists, the index is declared but unproven.
+
+### Least privilege and one recorded privilege gap
+
+The reviewed grants give the runtime role table-level `SELECT` and `INSERT`
+where the five-step flow needs them, and `UPDATE` on exactly three tables:
+memory sessions, projection generations, and action receipts. The runtime role
+gets **no `UPDATE` on runs**, no privilege on the migration ledger, and no
+`DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`,
+cluster-setting, database-wide, or wildcard privilege. Ranked recall-result
+items are immutable by privilege: `INSERT` and `SELECT` only.
+
+**Recorded correction gate:** the existing `managed-mcp` identity inherits
+`admin`. While that inheritance stands, that identity must not be described as
+least-privileged. Nothing in migration 002 or its grants changes it; correcting
+it is a separate explicitly authorized live operation with its own evidence.
+
+### Verifying the source contract
+
+```bash
+node --test apps/api/test/vector-memory-migration-source.test.mjs
+npm run verify
+```
+
+`apps/api/test/vector-memory-migration-source.test.mjs` recomputes the
+migration's SHA-256 (Secure Hash Algorithm 256-bit) digest and its top-level
+statement count from the migration file itself and fails if the activation
+file drifts by one byte. It also rejects unqualified objects, destructive
+statements, a missing vector dimension or wrong operator class, weak cross-run
+or cross-projection keys, unsafe raw-content columns, broad runtime privileges,
+runtime `UPDATE` on runs, non-idempotent receipt or recall-result constraints,
+and any overwrite behavior in the activation sources.
