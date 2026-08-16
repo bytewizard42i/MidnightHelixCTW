@@ -251,6 +251,69 @@ safe, authorized, or a cryptographic commitment to private data. It is not
 private DID (Decentralized Identifier) authorization and not production
 privacy.
 
+**Run 4 (Session 6 integrated proof — clean merged tree), sanitized
+receipt (exit 0):**
+
+This run exercised the branch AFTER a normal, non-rewriting merge of the
+settled `main` checkpoint `361ad088aaaf8cb0c1e4441555577805ffabda50` into
+`codex/penny-local-midnight`, so it proves the local Midnight evidence and
+the settled Helix Runtime Bridge (AWS (Amazon Web Services) Lambda)
+application truth coexist in one tree. The merge was conflict-free.
+
+Preconditions verified: tracked tree clean at merge commit
+`445f4f85bc285aba0f2dc7944d67ba3752b71dd0`; the driver derived that commit
+itself and printed
+`provenance: clean tracked tree at commit 445f4f85bc285aba0f2dc7944d67ba3752b71dd0`
+before any network work. Environment: Docker Engine 29.6.2, Docker Compose
+v5.3.1, 15.62 GiB (gibibytes) and 12 processors visible to Docker, ports
+9944, 8088, and 6300 all free beforehand. The stack reached full health in
+5 seconds (`net:up` wall time 11.7 seconds); end-to-end smoke wall time was
+approximately 69 seconds.
+
+```json
+{
+  "label": "VERIFIED LOCAL",
+  "networkId": "undeployed",
+  "contractAddress": "7596c066c14774235c39e6d7da3b9688f4dc427680ead9e503fd2ee104fa3558",
+  "txId": "00acbc05d1effaf893cc4297d2b9e72b74495d909df6ba885680fab16ab0b84bd5",
+  "blockHeight": 24,
+  "circuit": "recordCommitment",
+  "publicCommitmentHex": "8192786748cc953f01792819ff8b2d020c3ff62f837157897a23538bd21b3d7f",
+  "checks": { "commitmentCountIsOne": true, "commitmentMatches": true },
+  "sourceCommit": "445f4f85bc285aba0f2dc7944d67ba3752b71dd0",
+  "compiler": "0.31.1",
+  "images": { "node": "1.0.0", "indexer": "4.3.3", "proofServer": "8.1.0" },
+  "timestamp": "2026-08-16T13:35:43.758Z"
+}
+```
+
+Its `sourceCommit` proves the exact clean merged implementation that Run 4
+exercised. The evidence-only commit carrying this record necessarily
+receives a newer Git commit hash, because adding a receipt changes the hash
+of the commit that contains it; that newer hash does not weaken the
+provenance recorded above.
+
+Check record for Run 4 (all exit 0): Node.js preflight passed (v22.23.2,
+pinned via `.nvmrc`); `npm ci` reproducible install in `local-midnight/`
+and at the repository root; archiver regression `test:archive` 10 of 10
+checks passed; TypeScript type check passed; Compact compile with toolchain
+0.31.1 and no skip flags passed; Compose configuration validation
+(`config --quiet`) passed; documentation-link verification passed for 46
+Markdown files; repository `npm run verify` (tests, type check, and build)
+passed; `git diff --check origin/main...HEAD` clean; sensitive-value scan
+over the staged evidence found no value. Limitation recorded honestly: the
+Gitleaks binary is not installed on this machine and no cached Gitleaks
+image was present, so the repository Gitleaks scan was NOT run locally; the
+GitHub Secret Scan check covers it remotely.
+
+Shutdown evidence for Run 4: `net:down` removed all three containers and
+the Compose network; `docker ps --filter name=mhelix` returned no rows, and
+no stopped `mhelix` container remained. The hardened recoverable archiver
+moved `midnight-level-db/` and `logs/` into the git-ignored timestamped
+folder `state-archive/20260816T133558Z/` (verified present, live locations
+absent). Nothing was silently deleted, and no archive, artifact, log,
+private state, or receipt was committed outside this sanitized document.
+
 **Label scope:** `VERIFIED LOCAL` applies to this local disposable network
 only, per the trust boundary
 ([../../MIDNIGHT_TRUST_BOUNDARY.md](../../MIDNIGHT_TRUST_BOUNDARY.md)).
