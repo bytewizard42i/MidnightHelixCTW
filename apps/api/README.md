@@ -24,7 +24,7 @@ global deployment evidence `SOURCE_ONLY`, all downstream providers
 
 The live TestWired CockroachDB database is `mhelix_testwired`. Migration
 `database/migrations/001_testwired_memory_core.sql` has been applied, creating
-the `mhelix_testwired` schema and 10 empty tables owned by
+the `mhelix_testwired` schema and 10 tables owned by
 `mhelix_migrator`. The `mhelix_migrator` and `mhelix_runtime` users do not
 inherit `admin`. The runtime user has database `CONNECT`, schema `USAGE`, and
 `SELECT` only on `mhelix_environment_markers`; a `SELECT` from `mhelix_runs`
@@ -34,8 +34,13 @@ This is live database-foundation evidence, not application-provider evidence.
 The canonical environment-marker contract is committed at `48e85b4` in
 `apps/api/src/environment-marker.js`, with expected digest
 `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
-The migration-ledger row and environment-marker row have not been inserted,
-and the deployed AWS (Amazon Web Services) Lambda transport has no database
+Source commit `7a29f22` contains the reviewed atomic activation. An authenticated
+`mhelix_migrator` session applied it, and sanitized post-commit readback showed
+exactly one canonical environment-marker row with all 8 comparisons true
+across the entire marker table, plus exactly one migration-001 ledger row with
+all 6 comparisons true.
+
+The deployed AWS (Amazon Web Services) Lambda transport still has no database
 bootstrap. The exported handler therefore remains fail closed with the
 CockroachDB provider `NOT_CONNECTED`.
 

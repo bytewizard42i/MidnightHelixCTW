@@ -65,14 +65,20 @@ this source migration.
 This repository intentionally does not include a deployed driver bootstrap or a
 general migration command. Migration `001_testwired_memory_core.sql` was
 independently applied on 2026-08-15 to database and schema `mhelix_testwired`.
-It created 10 empty tables owned by `mhelix_migrator`. The `mhelix_migrator`
+It created 10 tables owned by `mhelix_migrator`. The `mhelix_migrator`
 and `mhelix_runtime` users do not inherit `admin`. The runtime user has database
 `CONNECT`, schema `USAGE`, and `SELECT` only on
 `mhelix_environment_markers`; `SELECT` on `mhelix_runs` is denied as intended.
 
-This is `LIVE TESTWIRED` foundation evidence only. The migration-ledger and
-environment-marker rows have not been inserted, and the deployed AWS (Amazon
-Web Services) Lambda transport has no database bootstrap. The CockroachDB
+Source commit `7a29f22` contains the reviewed plain-`INSERT` activation. On
+2026-08-15, an authenticated `mhelix_migrator` session applied its atomic
+transaction. Sanitized post-commit readback showed exactly one canonical
+environment-marker row, with all 8 comparisons true across the entire marker
+table, and exactly one migration-001 ledger row, with all 6 comparisons true.
+See the [sanitized activation archive](../../docs/archive/cockroachdb/2026-08-15-marker-activation.md).
+
+This is `LIVE TESTWIRED` foundation evidence only. The deployed AWS (Amazon Web
+Services) Lambda transport has no database bootstrap. The CockroachDB
 application provider remains `NOT_CONNECTED`; persistent memory, vector
 retrieval, and Managed MCP (Model Context Protocol) remain unproven and planned.
 The Lambda runtime will eventually receive only a named AWS (Amazon Web Services)
@@ -116,7 +122,9 @@ ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198
 ```
 
 The canonical marker source was committed at `48e85b4`. The digest above is the
-expected public drift-evidence value; no corresponding live marker row exists.
+expected public drift-evidence value. The canonical live marker row was
+installed from source commit `7a29f22` and passed the boolean-only post-commit
+readback described above.
 
 The commitment is public deterministic configuration-drift evidence. It is not
 a secret, authentication mechanism, signature, proof of writer identity, proof

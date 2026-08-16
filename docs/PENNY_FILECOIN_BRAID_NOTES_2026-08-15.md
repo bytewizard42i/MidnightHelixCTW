@@ -24,15 +24,25 @@
   wired into the deployed Lambda.
 - What is live: AWS (Amazon Web Services) transport through API (Application
   Programming Interface) Gateway and Lambda, plus the public judge UI (User
-  Interface). The CockroachDB foundation now has an applied additive schema and
-  verified least-privilege roles. The deployed Lambda still has no database
-  bootstrap, the environment marker is not activated, and persistent memory and
-  vector retrieval are not proven. Midnight, Bedrock, and Managed MCP (Model
-  Context Protocol) remain `PLANNED`.
+  Interface). The CockroachDB foundation has an applied additive schema,
+  verified least-privilege roles, and active canonical marker and migration-001
+  ledger rows. The deployed Lambda still has no database bootstrap, and
+  persistent memory and vector retrieval are not proven. Midnight, Bedrock, and
+  Managed MCP (Model Context Protocol) remain `PLANNED`.
 - **Filecoin is explicitly outside the critical hackathon path.** Priority Zero
   remains CockroachDB persistent memory, vector retrieval, read-only Managed
   MCP (Model Context Protocol), the complete judge flow, and the demo video.
   Nothing in this file should displace that work before August 25.
+
+> **Post-draft activation note, 2026-08-15:** From source commit `7a29f22`, an
+> authenticated `mhelix_migrator` session applied the reviewed atomic
+> activation. Sanitized post-commit readback showed exactly one canonical marker
+> row with all 8 comparisons true across the entire marker table and exactly one
+> migration-001 ledger row with all 6 comparisons true. This updates foundation
+> evidence only. The deployed Lambda still has no database bootstrap, so the
+> CockroachDB application provider remains `NOT_CONNECTED`. Persistent memory,
+> vector retrieval, Managed MCP (Model Context Protocol), Bedrock, and Midnight
+> remain unproven and disconnected.
 
 ## 2. Filecoin's strand in the braid
 

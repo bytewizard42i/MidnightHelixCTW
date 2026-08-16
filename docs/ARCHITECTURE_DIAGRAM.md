@@ -44,31 +44,33 @@ flowchart LR
 | API (Application Programming Interface) | <https://iyoshkil91.execute-api.us-east-1.amazonaws.com> |
 | Amplify origin | <https://main.d23ghemtd40rom.amplifyapp.com> |
 | Custom UI (User Interface) | <https://testwired.helixctw.com> |
-| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 empty tables owned by `mhelix_migrator`; runtime activation remains pending. |
+| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback. |
 
 Only the AWS (Amazon Web Services) transport and public UI (User Interface)
 hosting are application-connected. CockroachDB has a verified live schema
 foundation, least-privilege migrator and runtime users, and a committed
-environment-marker contract, but the marker row and deployed runtime bootstrap
-are absent. The CockroachDB application provider, AWS (Amazon Web Services)
-Bedrock, Midnight, and Managed MCP (Model Context Protocol) remain
-`NOT_CONNECTED`. Valid mutations return `503 LIVE_PROVIDERS_NOT_CONNECTED` and
-fail closed, so the global `deploymentEvidence` value remains `SOURCE_ONLY`.
+environment-marker contract. An authenticated `mhelix_migrator` session
+applied the reviewed atomic activation from source commit `7a29f22`, but the
+deployed runtime bootstrap remains absent. The CockroachDB application provider,
+AWS (Amazon Web Services) Bedrock, Midnight, and Managed MCP (Model Context
+Protocol) remain `NOT_CONNECTED`. Valid mutations return
+`503 LIVE_PROVIDERS_NOT_CONNECTED` and fail closed, so the global
+`deploymentEvidence` value remains `SOURCE_ONLY`.
 
 ## The three planes
 
 ### Target memory plane
 
 CockroachDB is provisioned with the `mhelix_testwired` database and schema.
-Migration `001_testwired_memory_core.sql` created 10 empty tables owned by
+Migration `001_testwired_memory_core.sql` created 10 tables owned by
 `mhelix_migrator`. The `mhelix_runtime` user has database `CONNECT`, schema
 `USAGE`, and `SELECT` only on the environment-marker table; access to
-`mhelix_runs` is denied as intended. No migration-ledger row or
-environment-marker row has been inserted, and the deployed AWS (Amazon Web
-Services) Lambda transport does not inject a database provider. Durable session
-history, append-only events, privacy-safe summaries, vectors, exact property
-state, rebuild generations, and receipts therefore remain planned and
-disconnected application capabilities.
+`mhelix_runs` is denied as intended. Exactly one canonical environment-marker
+row and one migration-001 ledger row passed sanitized post-commit readback. The
+deployed AWS (Amazon Web Services) Lambda transport does not inject a database
+provider. Durable session history, append-only events, privacy-safe summaries,
+vectors, exact property state, rebuild generations, and receipts therefore
+remain planned and disconnected application capabilities.
 
 ### Target trust plane
 

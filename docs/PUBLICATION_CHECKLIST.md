@@ -12,7 +12,7 @@ commit and public URLs (Uniform Resource Locators) exist.
 | Guided UI, narration allowlist, keyboard and reduced-motion source, request guards, and typed evidence validation | Local source and tests exist | Repeat built-preview desktop, mobile, accessibility, console, and network checks at the release commit. |
 | AWS (Amazon Web Services) SAM (Serverless Application Model) source and built-template OpenAPI (Open Application Programming Interface) contract | Deployed transport is `CREATE_COMPLETE`; read-only public routes are live and mutation requests fail closed | Repeat release-commit browser, log, and public-link checks. |
 | Public UI (User Interface), generated AWS (Amazon Web Services) API (Application Programming Interface), CloudWatch runtime evidence | Generated and custom frontend addresses are live; exact-origin CORS (Cross-Origin Resource Sharing) and fail-closed mutation behavior were verified | Final judge-flow and release-commit evidence gates remain open. |
-| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 empty tables owned by `mhelix_migrator`; least-privilege runtime denial was verified | Marker and migration-ledger rows plus the deployed runtime bootstrap remain open, so the application provider stays `NOT_CONNECTED`. |
+| CockroachDB foundation | Database and schema `mhelix_testwired` exist; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; least-privilege runtime denial was verified; exactly one canonical marker row and one migration-001 ledger row passed sanitized post-commit readback | The deployed runtime bootstrap remains open, so the application provider stays `NOT_CONNECTED`. |
 | Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | Not connected | Their live, video, and sponsor-tool gates remain open. |
 
 See [WORK_LOG_2026-08-14.md](WORK_LOG_2026-08-14.md) for the dated evidence and
@@ -21,17 +21,19 @@ known limitations.
 ## CockroachDB provider activation gates
 
 - [x] Migration `001_testwired_memory_core.sql` created the
-  `mhelix_testwired` schema and 10 empty tables owned by `mhelix_migrator`.
+  `mhelix_testwired` schema and 10 tables owned by `mhelix_migrator`.
 - [x] `mhelix_migrator` and `mhelix_runtime` do not inherit `admin`.
 - [x] `mhelix_runtime` has database `CONNECT`, schema `USAGE`, and `SELECT`
   only on `mhelix_environment_markers`; `SELECT` on `mhelix_runs` is denied.
 - [x] The canonical environment-marker contract is committed at `48e85b4` with
   digest
   `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
-- [ ] Insert exactly one reviewed migration-ledger row and one matching
-  environment-marker row from the committed canonical contract.
-- [ ] Independently read back the migration ledger and marker digest without
-  exposing credentials or connection material.
+- [x] From source commit `7a29f22`, an authenticated `mhelix_migrator`
+  session applied the atomic activation containing one reviewed migration-ledger
+  row and one matching environment-marker row.
+- [x] Sanitized post-commit readback showed exactly one canonical marker row
+  with all 8 comparisons true across the entire marker table and exactly one
+  migration-001 ledger row with all 6 comparisons true.
 - [ ] Configure the expected marker digest, bounded query executor, server-side
   timeout, and secret reference in the reviewed AWS (Amazon Web Services)
   Lambda bootstrap.

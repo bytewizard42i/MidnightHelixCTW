@@ -25,17 +25,21 @@ current live evidence.
 >
 > The CockroachDB foundation is also verified independently. Database and
 > schema `mhelix_testwired` exist, and migration
-> `001_testwired_memory_core.sql` created 10 empty tables owned by
+> `001_testwired_memory_core.sql` created 10 tables owned by
 > `mhelix_migrator`. The `mhelix_migrator` and `mhelix_runtime` users do not
 > inherit `admin`. The runtime user has database `CONNECT`, schema `USAGE`, and
 > `SELECT` only on `mhelix_environment_markers`; a read from `mhelix_runs` is
 > denied as intended. The canonical environment-marker contract is committed
 > at `48e85b4` with digest
 > `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
-> No migration-ledger row or environment-marker row has been inserted, and the
-> deployed AWS (Amazon Web Services) Lambda transport has no database
-> bootstrap. CockroachDB therefore remains `NOT_CONNECTED` at the application
-> provider boundary.
+> Source commit `7a29f22` contains the reviewed atomic activation. An
+> authenticated `mhelix_migrator` session applied it. Sanitized post-commit
+> readback showed exactly one canonical marker row with all 8 comparisons true
+> across the entire marker table and exactly one migration-001 ledger row with
+> all 6 comparisons true. The deployed AWS (Amazon Web Services) Lambda has no
+> database bootstrap, so CockroachDB remains `NOT_CONNECTED` at the application
+> provider boundary. See the
+> [sanitized activation archive](archive/cockroachdb/2026-08-15-marker-activation.md).
 
 ## Target public surfaces
 
@@ -87,9 +91,10 @@ remains `TESTWIRED`; each capability is promoted separately only after its requi
 ## Step 1, provision CockroachDB safely
 
 The 2026-08-15 foundation checkpoint completed the isolated database, schema,
-migration, table ownership, role separation, and negative permission test. The
-environment-marker row, migration-ledger row, deployed AWS (Amazon Web Services)
-Lambda bootstrap, fixture seed, and vector path remain incomplete.
+migration, table ownership, role separation, negative permission test, and
+canonical marker and migration-ledger activation. The deployed AWS (Amazon Web
+Services) Lambda bootstrap, fixture seed, and vector path remain incomplete.
+The application provider therefore remains `NOT_CONNECTED`.
 
 1. Select the Basic cluster intended for the hackathon.
 2. Use the dedicated `mhelix_testwired` database rather than sharing the public schema with unrelated
@@ -102,11 +107,12 @@ Lambda bootstrap, fixture seed, and vector path remain incomplete.
    and runtime user.
 8. Apply migrations and seed only the immutable synthetic fixture namespace.
 
-Steps 1 through 4 and Step 6 have verified foundation evidence. Step 5 remains
-open until the Managed MCP (Model Context Protocol) role is separately proven
-read only. Before Step 7 can promote the provider, insert the migration-ledger
-and environment-marker rows from the committed canonical contract,
-independently read back the expected digest, and then deploy the reviewed
+Steps 1 through 4, Step 6, and Step 7 have verified foundation evidence. The
+Step 7 activation was applied by an authenticated `mhelix_migrator` session
+from source commit `7a29f22`; sanitized post-commit readback returned all 8
+marker comparisons and all 6 ledger comparisons true. Step 5 remains open until
+the Managed MCP (Model Context Protocol) role is separately proven read only.
+Before the provider can be promoted, deploy and verify the reviewed Lambda
 bootstrap. Step 8 remains open until the synthetic fixture and vector path are
 implemented and verified.
 

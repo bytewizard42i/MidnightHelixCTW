@@ -9,14 +9,18 @@ keeping the other DIDzM (DIDzMonolith) pillars as explicit synthetic providers.
 > **Current topology, 2026-08-15:** The judge UI (User Interface) and AWS
 > (Amazon Web Services) API (Application Programming Interface) Gateway and
 > Lambda transport are live. CockroachDB has a `LIVE TESTWIRED` database and
-> schema foundation: migration 001 was applied, 10 empty tables are owned by
+> schema foundation: migration 001 created 10 tables owned by
 > `mhelix_migrator`, and least-privilege runtime access and denial were verified.
-> The read-only probe remains `SOURCE ONLY`; the migration-ledger and marker rows
-> are absent, and the deployed Lambda has no database bootstrap. The CockroachDB
-> application provider remains `NOT_CONNECTED`; persistent memory, vector
-> retrieval, and Managed MCP (Model Context Protocol) remain unproven and
-> planned. Bedrock, Midnight, and reconstruction remain `PLANNED` and
-> `NOT_CONNECTED`. The topology below is the target design. See
+> Source commit `7a29f22` contains the reviewed atomic activation, which an
+> authenticated `mhelix_migrator` session applied. Sanitized post-commit
+> readback showed exactly one canonical marker row with all 8 comparisons true
+> across the marker table and exactly one migration-001 ledger row with all 6
+> comparisons true. The read-only probe remains `SOURCE ONLY`, and the deployed
+> Lambda has no database bootstrap. The CockroachDB application provider remains
+> `NOT_CONNECTED`; persistent memory, vector retrieval, and Managed MCP (Model
+> Context Protocol) remain unproven and planned. Bedrock, Midnight, and
+> reconstruction remain `PLANNED` and `NOT_CONNECTED`. The topology below is
+> the target design. See
 > [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 The repository is designed around one property question:
@@ -82,7 +86,7 @@ returned.
 #### Verified CockroachDB foundation boundary
 
 On 2026-08-15, migration `001_testwired_memory_core.sql` was applied to database
-and schema `mhelix_testwired`. It created 10 empty tables owned by
+and schema `mhelix_testwired`. It created 10 tables owned by
 `mhelix_migrator`. The `mhelix_migrator` and `mhelix_runtime` users do not
 inherit `admin`. The runtime user has database `CONNECT`, schema `USAGE`, and
 `SELECT` only on `mhelix_environment_markers`; `SELECT` on `mhelix_runs` is
@@ -90,10 +94,14 @@ denied as intended.
 
 The canonical environment-marker source is committed at `48e85b4`, with digest
 `ee7b2de59f5684b23449d569bbe0e3ba0f73e50712ca28be1ae3afe12f991198`.
-The migration-ledger and marker rows have not been inserted, and the deployed
-AWS (Amazon Web Services) Lambda transport has no database bootstrap. This is
-live foundation evidence only, not proof of a connected provider, persistent
-memory, vector retrieval, or Managed MCP (Model Context Protocol).
+Source commit `7a29f22` contains the reviewed atomic activation. An authenticated
+`mhelix_migrator` session applied it. Sanitized post-commit readback showed
+exactly one canonical marker row with all 8 comparisons true across the entire
+marker table and exactly one migration-001 ledger row with all 6 comparisons
+true. The deployed AWS (Amazon Web Services) Lambda transport has no database
+bootstrap. This is live foundation evidence only, not proof of a connected
+provider, persistent memory, vector retrieval, or Managed MCP (Model Context
+Protocol).
 
 ### Filecoin: planned encrypted cold evidence
 
