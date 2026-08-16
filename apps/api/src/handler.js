@@ -644,40 +644,59 @@ function validateActionBody(requestBody) {
 }
 
 /**
- * Resolve whether the narrow vector-memory slice may run.
+ * Resolve whether the narrow vector-memory slice may run, WITHOUT touching the
+ * database unless it plausibly can.
  *
- * This gate is deliberately SEPARATE from the global provider readiness flag.
- * It never promotes the application: `currentAvailability` stays
- * `NOT_CONNECTED` and every deferred provider stays exactly as it was. It
- * authorizes only the five reviewed memory routes, and only when all of these
- * hold:
+ * Order matters and is deliberate:
  *
- *   1. a vector-memory provider was injected at deployment;
- *   2. the CockroachDB environment-marker probe is connected;
- *   3. a capability row exists for THIS exact release and does not claim
- *      public mutation readiness.
+ *   1. If no memory provider is deployed, the gate is closed. No work done.
+ *   2. Ask the provider for the release-bound capability row. When the slice
+ *      is not activated, this fails fast (secret missing, capability row
+ *      absent), the gate stays closed, and CRUCIALLY no environment probe has
+ *      run — a blocked mutation must not touch the database, and its response
+ *      must carry the baseline provider states exactly as it always has.
+ *   3. Only after the capability check succeeds is the environment-marker
+ *      probe consulted, and the marker must read CONNECTED.
  *
- * Any failure returns `false`, which means the routes keep their existing
- * fail-closed 503. It never throws, because a gate that can crash is not a
- * fail-closed gate.
+ * This gate never promotes the application. currentAvailability stays
+ * NOT_CONNECTED, readyForMutations stays false, and deferred providers stay
+ * untouched. It cannot throw, because a gate that can crash is not fail-closed.
+ *
+ * Returns the provider states the response should carry: baseline states when
+ * the gate never probed, live states when it did.
  */
-async function resolveMemoryReadiness(vectorMemoryProvider, providerStates) {
-  if (!vectorMemoryProvider || typeof vectorMemoryProvider.checkCapability !== "function") {
-    return { ready: false, reason: "PROVIDER_NOT_DEPLOYED" };
+async function resolveMemoryReadiness(
+  vectorMemoryProvider,
+  cockroachProvider,
+  configuration,
+  requestId,
+) {
+  const baselineStates = cloneProviderStates(configuration, requestId);
+  if (
+    !vectorMemoryProvider ||
+    typeof vectorMemoryProvider.checkCapability !== "function"
+  ) {
+    return { ready: false, providerStates: baselineStates };
   }
-  const cockroachState = providerStates.find(
+  try {
+    await vectorMemoryProvider.checkCapability();
+  } catch {
+    // Not activated. The specific reason deliberately stays private, and no
+    // probe has touched the database.
+    return { ready: false, providerStates: baselineStates };
+  }
+  const liveStates = await buildReadOnlyProviderStates(
+    configuration,
+    requestId,
+    cockroachProvider,
+  );
+  const cockroachState = liveStates.find(
     (providerState) => providerState.id === "cockroachdb",
   );
   if (cockroachState?.connection !== "CONNECTED") {
-    return { ready: false, reason: "ENVIRONMENT_MARKER_NOT_CONNECTED" };
+    return { ready: false, providerStates: liveStates };
   }
-  try {
-    const capability = await vectorMemoryProvider.checkCapability();
-    return { ready: true, capabilityState: capability.capabilityState };
-  } catch {
-    // The specific database reason is deliberately not surfaced publicly.
-    return { ready: false, reason: "CAPABILITY_NOT_ACTIVATED" };
-  }
+  return { ready: true, providerStates: liveStates };
 }
 
 /**
@@ -946,18 +965,13 @@ async function dispatchRequest(
     assertBoundedIdentifier(resolvedRoute.parameters.receiptId, "receiptId");
   }
 
-  // The read-only routes always resolve live provider states. A mutation route
-  // resolves them ONLY when a vector-memory provider is deployed, because the
-  // gate needs the environment marker before it may permit a write.
-  //
-  // When no memory provider is deployed, which is the fail-closed default, a
-  // blocked mutation performs no probe and reports the baseline row exactly as
-  // it always has. That keeps blocked routes from touching the database at all.
-  const resolvesLiveProviders =
-    ["health", "status", "scenarios"].includes(resolvedRoute.name) ||
-    vectorMemoryProvider !== undefined;
-
-  const providerStates = resolvesLiveProviders
+  // Only the read-only routes resolve live provider states up front. The
+  // memory routes decide through the two-stage gate below, which probes the
+  // database only after the release-bound capability check has succeeded, so
+  // a blocked mutation never touches the database and reports baseline states.
+  const providerStates = ["health", "status", "scenarios"].includes(
+    resolvedRoute.name,
+  )
     ? await buildReadOnlyProviderStates(
         configuration,
         requestId,
@@ -1033,7 +1047,9 @@ async function dispatchRequest(
   if (resolvedRoute.name === "receipt") {
     const readiness = await resolveMemoryReadiness(
       vectorMemoryProvider,
-      providerStates,
+      cockroachProvider,
+      configuration,
+      requestId,
     );
     if (!readiness.ready) {
       return {
@@ -1041,7 +1057,7 @@ async function dispatchRequest(
         payload: unavailableOperationPayload(
           configuration,
           requestId,
-          providerStates,
+          readiness.providerStates,
         ),
       };
     }
@@ -1072,7 +1088,7 @@ async function dispatchRequest(
           matches: stored.matches,
           protectedFieldsReturned: stored.protectedFieldsReturned,
         },
-        providers: providerStates,
+        providers: readiness.providerStates,
       },
     };
   }
@@ -1090,7 +1106,9 @@ async function dispatchRequest(
 
   const memoryReadiness = await resolveMemoryReadiness(
     vectorMemoryProvider,
-    providerStates,
+    cockroachProvider,
+    configuration,
+    requestId,
   );
   if (memoryReadiness.ready) {
     return executeMemoryRoute({
@@ -1099,7 +1117,7 @@ async function dispatchRequest(
       event,
       configuration,
       requestId,
-      providerStates,
+      providerStates: memoryReadiness.providerStates,
       vectorMemoryProvider,
     });
   }
@@ -1109,7 +1127,7 @@ async function dispatchRequest(
     payload: unavailableOperationPayload(
       configuration,
       requestId,
-      providerStates,
+      memoryReadiness.providerStates,
     ),
   };
 }

@@ -336,24 +336,38 @@ SELECT (SELECT count(*) FROM mhelix_testwired.mhelix_runtime_capabilities) = 0
 -- declared inline, then compared in BOTH directions, so a missing grant, an
 -- extra grant, a grantable grant, or zero grants all fail.
 --
--- Expected: SELECT on twelve tables and nothing else. Eleven come from the
--- migration 002 grant packet; `mhelix_environment_markers` is the pre-existing
--- grant from the migration 001 activation. This slice grants NO INSERT and NO
--- UPDATE to the runtime role.
+-- The matrix mirrors the frozen statement catalog in
+-- `apps/api/src/vector-memory-statements.js`, which is the only SQL the
+-- runtime can execute: SELECT on twelve tables, INSERT on the nine tables the
+-- five-route journey appends to, and UPDATE on exactly the three lifecycle
+-- transitions. `mhelix_environment_markers` SELECT is the pre-existing grant
+-- from the migration 001 activation.
 WITH expected_grant (table_name, privilege_type) AS (
   VALUES
     ('mhelix_environment_markers', 'SELECT'),
     ('mhelix_runtime_capabilities', 'SELECT'),
     ('mhelix_case_namespaces', 'SELECT'),
     ('mhelix_runs', 'SELECT'),
+    ('mhelix_runs', 'INSERT'),
     ('mhelix_memory_sessions', 'SELECT'),
+    ('mhelix_memory_sessions', 'INSERT'),
+    ('mhelix_memory_sessions', 'UPDATE'),
     ('mhelix_memory_events', 'SELECT'),
+    ('mhelix_memory_events', 'INSERT'),
     ('mhelix_memory_summaries', 'SELECT'),
+    ('mhelix_memory_summaries', 'INSERT'),
     ('mhelix_memory_summary_embeddings', 'SELECT'),
+    ('mhelix_memory_summary_embeddings', 'INSERT'),
     ('mhelix_projection_generations', 'SELECT'),
+    ('mhelix_projection_generations', 'INSERT'),
+    ('mhelix_projection_generations', 'UPDATE'),
     ('mhelix_run_active_projections', 'SELECT'),
+    ('mhelix_run_active_projections', 'INSERT'),
     ('mhelix_action_receipts', 'SELECT'),
-    ('mhelix_recall_result_items', 'SELECT')
+    ('mhelix_action_receipts', 'INSERT'),
+    ('mhelix_action_receipts', 'UPDATE'),
+    ('mhelix_recall_result_items', 'SELECT'),
+    ('mhelix_recall_result_items', 'INSERT')
 ),
 actual_grant AS (
   SELECT table_name, privilege_type, is_grantable
@@ -361,7 +375,7 @@ actual_grant AS (
    WHERE table_schema = 'mhelix_testwired'
      AND grantee = 'mhelix_runtime'
 )
-SELECT (SELECT count(*) FROM actual_grant) = 12 AS runtime_grant_count_is_exact,
+SELECT (SELECT count(*) FROM actual_grant) = 24 AS runtime_grant_count_is_exact,
        (
          SELECT count(*) FROM (
            SELECT table_name, privilege_type FROM expected_grant
@@ -381,8 +395,29 @@ SELECT (SELECT count(*) FROM actual_grant) = 12 AS runtime_grant_count_is_exact,
        ) = 0 AS no_grant_is_grantable,
        (
          SELECT count(*) FROM actual_grant
-          WHERE privilege_type IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
-       ) = 0 AS runtime_holds_no_write_privilege,
+          WHERE privilege_type IN ('DELETE', 'TRUNCATE')
+       ) = 0 AS runtime_can_never_destroy_rows,
+       (
+         SELECT count(*) FROM actual_grant
+          WHERE privilege_type = 'UPDATE'
+            AND table_name NOT IN (
+              'mhelix_memory_sessions',
+              'mhelix_projection_generations',
+              'mhelix_action_receipts'
+            )
+       ) = 0 AS update_is_limited_to_the_three_transitions,
+       (
+         SELECT count(*) FROM actual_grant
+          WHERE table_name IN (
+              'mhelix_recall_result_items',
+              'mhelix_memory_summary_embeddings'
+            )
+            AND privilege_type NOT IN ('SELECT', 'INSERT')
+       ) = 0 AS evidence_and_vectors_are_immutable_by_privilege,
+       (
+         SELECT count(*) FROM actual_grant
+          WHERE table_name = 'mhelix_runs' AND privilege_type = 'UPDATE'
+       ) = 0 AS runtime_has_no_update_on_runs,
        (
          SELECT count(*)
            FROM information_schema.table_privileges

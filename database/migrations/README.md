@@ -262,27 +262,37 @@ inspect the existing tables, apply during a quiet period, monitor the
 schema-change job, and verify the resulting indexes
 ([online schema changes](https://www.cockroachlabs.com/docs/v26.2/online-schema-changes)).
 
-### Least privilege in this slice: `SELECT` only
+### Least privilege: the matrix mirrors the reviewed runtime
 
-The grant packet gives the runtime role database `CONNECT`, schema `USAGE`, and
-table-level `SELECT` on exactly the tables the read path needs. Nothing else.
+The grant packet gives the runtime role database `CONNECT`, schema `USAGE`,
+and table privileges that mirror the frozen statement catalog in
+`apps/api/src/vector-memory-statements.js` — the only SQL the runtime can
+execute:
 
-- **No `UPDATE`.** The lifecycle-transition grants (closing a memory session,
-  advancing a projection generation, completing an action receipt) are
-  **deferred** until the exact-statement application executor and the database
-  mutation boundary are reviewed together. A table-wide `UPDATE` grant is far
-  broader than the three specific transitions the flow needs.
-- **No `INSERT`.** No runtime implementation exists yet, so no write path can
-  justify an `INSERT` grant today.
-- No `DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`, `GRANT`, `REVOKE`,
-  ownership, cluster-setting, database-wide, or wildcard privilege, and no
-  `WITH GRANT OPTION` anywhere.
+- **`INSERT` on the nine append-only tables** the five-route journey writes:
+  runs, sessions, events, summaries, embeddings, projection generations,
+  run-scoped projection bindings, action receipts, and recall-result items.
+- **`UPDATE` on exactly three tables**, one per reviewed lifecycle transition:
+  closing a memory session, advancing a projection generation, and settling an
+  action receipt. Each transition statement carries its own state guard.
+- **`SELECT`** where the read paths need it.
 
-The grant script is **resumable and idempotent, not atomic**: CockroachDB can
-auto-commit a `GRANT` because it is a schema change, so the script is
-deliberately written without a surrounding transaction and may simply be re-run
-if interrupted. Authoritative completion evidence is the exact two-way readback,
-never the apparent success of the script.
+An earlier revision of this packet was `SELECT`-only because no reviewed
+runtime existed yet. That runtime now exists, is merged, and is tested, so the
+write grants are no longer privilege issued ahead of code.
+
+Still absent, deliberately: `UPDATE` on runs; any write on the capability,
+case-namespace, or marker tables (migrator-only); any privilege on the
+migration ledger; `UPDATE` or `DELETE` on recall evidence and stored vectors
+(immutable by privilege); and any `DELETE`, `TRUNCATE`, `DROP`, `ALTER`,
+`CREATE`, `GRANT`, `REVOKE`, ownership, cluster-setting, database-wide, or
+wildcard privilege, with no `WITH GRANT OPTION` anywhere.
+
+The grant script remains **resumable and idempotent, not atomic**: CockroachDB
+can auto-commit a `GRANT`, so the script is deliberately written without a
+surrounding transaction and may simply be re-run if interrupted. Authoritative
+completion evidence is the exact two-way readback, never the apparent success
+of the script.
 
 **Recorded correction gate:** the existing `managed-mcp` identity inherits
 `admin`. While that inheritance stands, that identity must not be described as

@@ -15,21 +15,33 @@
 -- two-way readback in `verify_vector_memory_activation.sql`, not the apparent
 -- success of this script.
 --
--- READ-ONLY BY DESIGN IN THIS SLICE.
--- This source-only pull request deliberately grants the runtime role SELECT
--- and nothing else:
---   * No UPDATE. The lifecycle-transition grants (closing a memory session,
---     advancing a projection generation, completing an action receipt) are
---     DEFERRED until the exact-statement application executor and the database
---     mutation boundary are reviewed together. A table-wide UPDATE grant is
---     far broader than the three specific transitions the flow actually needs.
---   * No INSERT. No runtime implementation exists yet, so no write path can
---     justify an INSERT grant today. Granting one now would be privilege
---     issued ahead of reviewed code.
---   * No DELETE, TRUNCATE, DROP, ALTER, CREATE, GRANT, REVOKE, ownership,
---     cluster-setting, or database-wide privilege, ever, from this file.
--- Ranked recall-result items and embeddings are therefore immutable to the
--- runtime role in this slice by construction, not merely by convention.
+-- HOW THIS MATRIX IS JUSTIFIED. Every write privilege below corresponds to a
+-- statement in the frozen catalog `apps/api/src/vector-memory-statements.js`,
+-- which is the only SQL the runtime can execute. The catalog's own contract
+-- tests forbid destructive verbs and any UPDATE outside the three reviewed
+-- lifecycle transitions, so this packet grants exactly what that reviewed code
+-- needs and nothing it could not use:
+--   * INSERT on the nine append-only tables the five-route journey writes;
+--   * UPDATE on exactly three tables, for the three lifecycle transitions:
+--     closing a memory session, advancing a projection generation, and
+--     settling an action receipt;
+--   * SELECT where the read paths need it.
+-- An earlier revision of this packet was SELECT-only because no reviewed
+-- runtime existed yet. That runtime now exists, is merged, and is tested, so
+-- the write grants are no longer privilege issued ahead of code.
+--
+-- Still absent, deliberately and forever from this file:
+--   * UPDATE on mhelix_runs: a run's lifecycle is not rewritable by the
+--     public runtime path.
+--   * INSERT or UPDATE on mhelix_runtime_capabilities, mhelix_case_namespaces,
+--     or mhelix_environment_markers: those rows are installed only by the
+--     authenticated migrator.
+--   * Any privilege at all on mhelix_schema_migrations.
+--   * UPDATE or DELETE on mhelix_recall_result_items and
+--     mhelix_memory_summary_embeddings: recall evidence and stored vectors
+--     are immutable by privilege.
+--   * DELETE, TRUNCATE, DROP, ALTER, CREATE, GRANT, REVOKE, ownership,
+--     cluster-setting, database-wide, or wildcard privilege of any kind.
 --
 -- Grants are named one table at a time. There is no `ALL TABLES IN SCHEMA`, no
 -- `ALL PRIVILEGES`, no wildcard target, and no `WITH GRANT OPTION`, so a
@@ -49,26 +61,50 @@
 GRANT CONNECT ON DATABASE mhelix_testwired TO mhelix_runtime;
 GRANT USAGE ON SCHEMA mhelix_testwired TO mhelix_runtime;
 
--- Read-only reference data for the recall path.
+-- Read-only reference data. The runtime may look, never touch.
 GRANT SELECT ON TABLE mhelix_testwired.mhelix_runtime_capabilities
   TO mhelix_runtime;
 GRANT SELECT ON TABLE mhelix_testwired.mhelix_case_namespaces
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_runs
+
+-- Runs: created once per journey, then read. Deliberately no UPDATE.
+GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_memory_sessions
+
+-- Sessions: created, read, and closed. One of the three UPDATE transitions.
+GRANT SELECT, INSERT, UPDATE ON TABLE mhelix_testwired.mhelix_memory_sessions
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_memory_events
+
+-- Append-only public-safe event log, including the durable denial event.
+GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_memory_events
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_memory_summaries
+
+-- Append-only event-anchored summaries.
+GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_memory_summaries
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_memory_summary_embeddings
+
+-- Append-only privacy-safe embeddings. Immutable once written.
+GRANT SELECT, INSERT
+  ON TABLE mhelix_testwired.mhelix_memory_summary_embeddings
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_projection_generations
+
+-- Projection generations: built, then advanced to ACTIVE. One of the three
+-- UPDATE transitions, guarded in the statement by its BUILDING precondition.
+GRANT SELECT, INSERT, UPDATE
+  ON TABLE mhelix_testwired.mhelix_projection_generations
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_run_active_projections
+
+-- Run-scoped active projection binding: bind once, then read. No UPDATE, so a
+-- run's projection can never be silently repointed.
+GRANT SELECT, INSERT
+  ON TABLE mhelix_testwired.mhelix_run_active_projections
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_action_receipts
+
+-- Action receipts: reserved, then settled exactly once. One of the three
+-- UPDATE transitions, guarded in the statement by its RESERVED precondition.
+GRANT SELECT, INSERT, UPDATE ON TABLE mhelix_testwired.mhelix_action_receipts
   TO mhelix_runtime;
-GRANT SELECT ON TABLE mhelix_testwired.mhelix_recall_result_items
+
+-- Ranked recall results: durable evidence, immutable by privilege.
+GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_recall_result_items
   TO mhelix_runtime;

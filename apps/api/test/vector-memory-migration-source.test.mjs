@@ -265,6 +265,25 @@ function collectMigrationViolations(rawSql) {
   return violations;
 }
 
+/**
+ * The exact privilege matrix justified by the frozen statement catalog.
+ * INSERT appears only where the catalog inserts, UPDATE only for the three
+ * reviewed lifecycle transitions, SELECT where the read paths need it.
+ */
+const GRANT_MATRIX = Object.freeze({
+  mhelix_runtime_capabilities: ["SELECT"],
+  mhelix_case_namespaces: ["SELECT"],
+  mhelix_runs: ["SELECT", "INSERT"],
+  mhelix_memory_sessions: ["SELECT", "INSERT", "UPDATE"],
+  mhelix_memory_events: ["SELECT", "INSERT"],
+  mhelix_memory_summaries: ["SELECT", "INSERT"],
+  mhelix_memory_summary_embeddings: ["SELECT", "INSERT"],
+  mhelix_projection_generations: ["SELECT", "INSERT", "UPDATE"],
+  mhelix_run_active_projections: ["SELECT", "INSERT"],
+  mhelix_action_receipts: ["SELECT", "INSERT", "UPDATE"],
+  mhelix_recall_result_items: ["SELECT", "INSERT"],
+});
+
 function collectGrantViolations(rawSql) {
   const executable = stripSqlComments(rawSql);
   const violations = [];
@@ -334,13 +353,17 @@ function collectGrantViolations(rawSql) {
     if (grantee !== RUNTIME_ROLE) {
       violations.push(`unexpected-grantee:${grantee}`);
     }
+    const bareTable = tableName.split(".")[1] ?? tableName;
     for (const privilege of privilegeList
       .split(",")
       .map((entry) => entry.trim().toUpperCase())) {
-      // This source-only slice grants SELECT and nothing else. INSERT and
-      // UPDATE are deferred until the application executor is reviewed.
-      if (privilege !== "SELECT") {
-        violations.push(`non-select-privilege:${privilege}:${tableName}`);
+      // The matrix mirrors the frozen statement catalog: INSERT only on the
+      // nine tables the journey appends to, UPDATE only on the three reviewed
+      // lifecycle transitions, SELECT elsewhere. Anything outside the matrix
+      // is privilege the reviewed runtime could not even use.
+      const allowed = GRANT_MATRIX[bareTable];
+      if (!allowed || !allowed.includes(privilege)) {
+        violations.push(`privilege-outside-matrix:${privilege}:${bareTable}`);
       }
     }
   }
@@ -518,7 +541,7 @@ test("committed migration 002 reports zero source violations", async () => {
   assert.deepEqual(collectMigrationViolations(await readText(MIGRATION_URL)), []);
 });
 
-test("committed grant packet reports zero violations and is SELECT only", async () => {
+test("committed grant packet reports zero violations and matches the catalog matrix", async () => {
   assert.deepEqual(collectGrantViolations(await readText(GRANTS_URL)), []);
 });
 
@@ -694,26 +717,42 @@ test("grant guards reject broad, grantable, and write privileges", async () => {
 
   const brokenVariants = [
     [
-      "runtime UPDATE granted",
+      "UPDATE granted on runs",
       grants.replace(
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_action_receipts",
-        "GRANT SELECT, UPDATE ON TABLE mhelix_testwired.mhelix_action_receipts",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs",
+        "GRANT SELECT, INSERT, UPDATE ON TABLE mhelix_testwired.mhelix_runs",
       ),
-      "non-select-privilege:UPDATE:mhelix_testwired.mhelix_action_receipts",
+      "privilege-outside-matrix:UPDATE:mhelix_runs",
     ],
     [
-      "runtime INSERT granted",
+      "UPDATE granted on immutable recall evidence",
       grants.replace(
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_recall_result_items",
         "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_recall_result_items",
+        "GRANT SELECT, INSERT, UPDATE ON TABLE mhelix_testwired.mhelix_recall_result_items",
       ),
-      "non-select-privilege:INSERT:mhelix_testwired.mhelix_recall_result_items",
+      "privilege-outside-matrix:UPDATE:mhelix_recall_result_items",
+    ],
+    [
+      "INSERT granted on the capability table",
+      grants.replace(
+        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_runtime_capabilities",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runtime_capabilities",
+      ),
+      "privilege-outside-matrix:INSERT:mhelix_runtime_capabilities",
+    ],
+    [
+      "DELETE granted anywhere",
+      grants.replace(
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_memory_events",
+        "GRANT SELECT, INSERT, DELETE ON TABLE mhelix_testwired.mhelix_memory_events",
+      ),
+      "delete-granted",
     ],
     [
       "grantable privilege",
       grants.replace(
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime;",
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime WITH GRANT OPTION;",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime;",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime WITH GRANT OPTION;",
       ),
       "grantable-privilege",
     ],
@@ -725,8 +764,8 @@ test("grant guards reject broad, grantable, and write privileges", async () => {
     [
       "grant to public",
       grants.replace(
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime;",
-        "GRANT SELECT ON TABLE mhelix_testwired.mhelix_runs\n  TO public;",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs\n  TO mhelix_runtime;",
+        "GRANT SELECT, INSERT ON TABLE mhelix_testwired.mhelix_runs\n  TO public;",
       ),
       "unexpected-grantee:public",
     ],
