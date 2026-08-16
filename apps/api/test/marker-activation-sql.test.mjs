@@ -116,6 +116,22 @@ test("verification SQL compares values and never echoes stored bytes", async () 
     /INSERT|UPSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER|GRANT|REVOKE/,
   );
 
+  // The marker table has one canonical row in this bounded environment, so
+  // its query must aggregate the entire table. The migration ledger is
+  // cumulative and therefore retains its canonical migration filter.
+  const verificationQueries = executableSql
+    .split(";")
+    .map((query) => query.trim())
+    .filter(Boolean);
+  assert.equal(verificationQueries.length, 2);
+  const [markerVerificationQuery, ledgerVerificationQuery] =
+    verificationQueries;
+  assert.doesNotMatch(markerVerificationQuery, /\bWHERE\b/i);
+  assert.match(
+    ledgerVerificationQuery,
+    new RegExp(`WHERE\\s+migration_id\\s*=\\s*'${manifest.migrationId}'`, "i"),
+  );
+
   // Every encode() of a stored byte column must feed an equality comparison,
   // so the stored commitment is never returned as a bare column.
   const encodeUses = executableSql.match(/encode\([^)]*\)[^\n]*/g) ?? [];

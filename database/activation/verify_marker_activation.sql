@@ -32,8 +32,7 @@ SELECT count(*) = 1 AS exactly_one_marker_row,
          AS evidence_receipt_id_present,
        coalesce(bool_and(installed_at IS NOT NULL), false)
          AS installed_at_present
-  FROM mhelix_testwired.mhelix_environment_markers
- WHERE marker_id = 'mhelixctw-testwired-environment';
+  FROM mhelix_testwired.mhelix_environment_markers;
 
 -- Ledger row: exact provenance and application timestamp. Every returned
 -- column is a boolean.
