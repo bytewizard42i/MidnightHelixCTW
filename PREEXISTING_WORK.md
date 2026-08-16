@@ -61,13 +61,40 @@ https://github.com/bytewizard42i/TestTownDIDz
 Pinned public source commit:
 
 ```text
-f145c07b3f8abf62c04e1532f67118b5a5aa66b9
+d0a0987557cd5c3dc6ebb7dc1c11fc8d9b1cbf03
 ```
 
-The repository bundles only the minimum fictional property and owner snapshot
-required for the judge flow. Newly created deed, mortgage-satisfaction,
-authority, agent, and disclosure fixtures are clearly marked as derived
-hackathon test data. The original TestTown repository remains unchanged.
+License: Apache-2.0. The upstream repository declared Apache-2.0 in its README
+but carried no `LICENSE` file, so GitHub detected no license. During this
+submission period a standard Apache-2.0 `LICENSE` was added upstream at the
+commit pinned above, making the terms unambiguous for this reuse. No dossier
+content was altered.
+
+Two distinct pieces of TestTown material are incorporated:
+
+1. **The original owner and property snapshot.** The repository bundles only
+   the minimum fictional property and owner records required for the judge
+   flow. Newly created deed, mortgage-satisfaction, authority, agent, and
+   disclosure fixtures are clearly marked as derived hackathon test data.
+2. **The public-safe memory corpus** in
+   `fixtures/testtown/memory-corpus/`, created during the submission period.
+   It derives 63 one-sentence public-safe summaries from the upstream synthetic
+   dossiers so that CockroachDB distributed vector indexing is exercised over a
+   realistic population rather than demonstrated on two rows. The derivation
+   script, the embeddings, the commitments, and the privacy boundary are all
+   new submission work; only the underlying fictional facts are pre-existing.
+
+**Privacy boundary applied to the derivation.** Protected values are never
+copied into this repository in any form: employer identification numbers, state
+registration numbers, dates of birth, birth-record issuers, document contents,
+and officer names are excluded, and only their field *names* are retained so
+the disclosure route can prove which fields it withheld. Founding dates are
+reduced to a year. Fraud *mechanism* detail is withheld as investigative
+detail, including inside identifiers. `apps/api/test/synthetic-embedding.test.mjs`
+enforces every one of those rules.
+
+The original TestTown repository remains unchanged apart from the added
+`LICENSE`.
 
 ## Imported Helix visual and narrative material
 
