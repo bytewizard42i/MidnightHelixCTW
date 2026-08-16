@@ -86,6 +86,28 @@ test("verification SQL compares values and never echoes stored bytes", async () 
   assert.match(verificationSql, new RegExp(`'${manifest.migrationSha256}'`));
   assert.match(verificationSql, new RegExp(`'${manifest.markerId}'`));
   assert.match(verificationSql, new RegExp(`'${manifest.migrationId}'`));
+  assert.match(verificationSql, new RegExp(`'${manifest.sourceFileName}'`));
+  assert.match(verificationSql, new RegExp(`'${manifest.buildStage}'`));
+  assert.match(
+    verificationSql,
+    new RegExp(`marker_version\\s*=\\s*${manifest.markerVersion}`),
+  );
+  assert.match(
+    verificationSql,
+    new RegExp(`statement_count\\s*=\\s*${manifest.statementCount}`),
+  );
+
+  // Both queries collapse zero, one, or unexpected duplicate matches into a
+  // single boolean-only evidence row. Missing rows must become false rather
+  // than a misleading empty result or SQL (Structured Query Language) NULL.
+  assert.equal(
+    (verificationSql.match(/count\(\*\) = 1 AS exactly_one_/g) ?? []).length,
+    2,
+  );
+  assert.match(verificationSql, /coalesce\(bool_and\(/);
+  assert.match(verificationSql, /evidence_receipt_id IS NOT NULL/);
+  assert.match(verificationSql, /installed_at IS NOT NULL/);
+  assert.match(verificationSql, /applied_at IS NOT NULL/);
 
   // Read-only: no mutating statement of any kind.
   const executableSql = stripSqlComments(verificationSql);
@@ -105,4 +127,10 @@ test("verification SQL compares values and never echoes stored bytes", async () 
   assert.doesNotMatch(verificationSql, /SELECT\s+\*/i);
   assert.doesNotMatch(verificationSql, /,\s*marker_commitment\s*[,\n]/);
   assert.doesNotMatch(verificationSql, /,\s*source_checksum\s*[,\n]/);
+  assert.doesNotMatch(executableSql, /^\s*SELECT\s+marker_id\b/im);
+  assert.doesNotMatch(executableSql, /^\s*SELECT\s+migration_id\b/im);
+  assert.doesNotMatch(executableSql, /,\s*build_stage\s*[,\n]/);
+  assert.doesNotMatch(executableSql, /,\s*marker_version\s*[,\n]/);
+  assert.doesNotMatch(executableSql, /,\s*installed_at\s*[,\n]/);
+  assert.doesNotMatch(executableSql, /,\s*applied_at\s*[,\n]/);
 });
