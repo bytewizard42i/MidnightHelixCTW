@@ -39,10 +39,20 @@ import {
   SYNTHETIC_EMBEDDING_DIMENSIONS,
   SYNTHETIC_EMBEDDING_MODEL_ID,
   generateSyntheticEmbedding,
-} from "../packages/mock-pillars/src/synthetic-embedding.js";
+} from "../apps/api/src/synthetic-embedding.js";
 
 const CORPUS_PATH = new URL(
   "../fixtures/testtown/memory-corpus/public-safe-corpus.json",
+  import.meta.url,
+);
+
+/**
+ * The deployable copy. The Lambda package contains only `apps/api`, so the
+ * runtime cannot reach the fixtures directory. Both files are written together
+ * and a test asserts they stay byte-identical, so the duplication cannot drift.
+ */
+const DEPLOYABLE_CORPUS_PATH = new URL(
+  "../apps/api/src/memory-corpus.json",
   import.meta.url,
 );
 
@@ -264,20 +274,23 @@ async function main() {
   const serialized = `${JSON.stringify(corpus, null, 2)}\n`;
 
   if (options.check) {
-    const committed = await readFile(CORPUS_PATH, "utf8");
-    if (committed !== serialized) {
-      console.error(
-        "committed corpus differs from a fresh derivation; re-run without --check",
-      );
-      exit(1);
+    for (const path of [CORPUS_PATH, DEPLOYABLE_CORPUS_PATH]) {
+      const committed = await readFile(path, "utf8");
+      if (committed !== serialized) {
+        console.error(
+          `committed corpus at ${path.pathname} differs from a fresh derivation; re-run without --check`,
+        );
+        exit(1);
+      }
     }
     console.log(
-      `corpus check passed: ${corpus.entryCount} public-safe entries match the committed file`,
+      `corpus check passed: ${corpus.entryCount} public-safe entries match both committed copies`,
     );
     return;
   }
 
   await writeFile(CORPUS_PATH, serialized, "utf8");
+  await writeFile(DEPLOYABLE_CORPUS_PATH, serialized, "utf8");
   console.log(
     `wrote ${corpus.entryCount} public-safe corpus entries (${SYNTHETIC_EMBEDDING_DIMENSIONS}-dimensional ${SYNTHETIC_EMBEDDING_MODEL_ID})`,
   );

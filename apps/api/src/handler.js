@@ -10,6 +10,12 @@ import {
   PROVIDER_STATES,
 } from "./constants.js";
 import { MHELIX_COCKROACH_PROBE_SCHEMA_VERSION } from "./cockroachdb-provider.js";
+import {
+  SYNTHETIC_EMBEDDING_MODEL_ID,
+  generateSyntheticEmbedding,
+  toVectorLiteral,
+} from "./synthetic-embedding.js";
+import memoryCorpus from "./memory-corpus.json" with { type: "json" };
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
 const AWS_LAMBDA_FUNCTION_NAME_PATTERN = /^[A-Za-z0-9-_]{1,57}-worker$/;
@@ -493,9 +499,55 @@ function readPostBody(event, configuration) {
     );
   }
 
-  // The validated idempotency key is deliberately not returned or logged. A
-  // later persistent implementation will hash it before lookup and storage.
+  // The validated idempotency key is deliberately not returned or logged. The
+  // provider hashes it before any lookup or storage, so the raw value never
+  // reaches the database.
   return decodeBoundedRequestBody(event, configuration.maxRequestBytes);
+}
+
+/**
+ * Re-read the idempotency key for the provider. `readPostBody` has already
+ * validated its shape and rejected the request otherwise.
+ */
+function getIdempotencyKey(event) {
+  return getHeader(event, "idempotency-key");
+}
+
+/**
+ * The protected field names the disclosure attempt asks for and is refused.
+ * These are NAMES ONLY. No protected value exists anywhere in this repository,
+ * so the denial cannot leak one even in principle.
+ */
+const PROTECTED_FIELD_NAMES_REFUSED = Object.freeze([
+  "ein",
+  "stateRegistration",
+  "born",
+  "birthRecordIssuer",
+  "documents",
+  "officers",
+]);
+
+/**
+ * The committed public-safe corpus, shaped for the provider. Loaded once.
+ * These are the deterministic TestTown fixtures, never live data.
+ */
+let cachedCorpusEntries;
+function loadMemoryCorpusEntries() {
+  if (cachedCorpusEntries === undefined) {
+    cachedCorpusEntries = Object.freeze(
+      memoryCorpus.entries.map((entry) =>
+        Object.freeze({
+          fixtureId: entry.fixtureId,
+          publicSafeSummary: entry.publicSafeSummary,
+          embeddingModelId: memoryCorpus.embeddingModelId,
+          embeddingDimensions: memoryCorpus.embeddingDimensions,
+          vectorLiteral: toVectorLiteral(entry.embedding),
+          embeddingCommitmentHex: entry.embeddingCommitmentHex,
+        }),
+      ),
+    );
+  }
+  return cachedCorpusEntries;
 }
 
 function assertStrictObjectShape(value, requiredKeys, optionalKeys = []) {
@@ -591,6 +643,204 @@ function validateActionBody(requestBody) {
   assertCanonicalAgentIdentifier(requestBody.agentDidz);
 }
 
+/**
+ * Resolve whether the narrow vector-memory slice may run.
+ *
+ * This gate is deliberately SEPARATE from the global provider readiness flag.
+ * It never promotes the application: `currentAvailability` stays
+ * `NOT_CONNECTED` and every deferred provider stays exactly as it was. It
+ * authorizes only the five reviewed memory routes, and only when all of these
+ * hold:
+ *
+ *   1. a vector-memory provider was injected at deployment;
+ *   2. the CockroachDB environment-marker probe is connected;
+ *   3. a capability row exists for THIS exact release and does not claim
+ *      public mutation readiness.
+ *
+ * Any failure returns `false`, which means the routes keep their existing
+ * fail-closed 503. It never throws, because a gate that can crash is not a
+ * fail-closed gate.
+ */
+async function resolveMemoryReadiness(vectorMemoryProvider, providerStates) {
+  if (!vectorMemoryProvider || typeof vectorMemoryProvider.checkCapability !== "function") {
+    return { ready: false, reason: "PROVIDER_NOT_DEPLOYED" };
+  }
+  const cockroachState = providerStates.find(
+    (providerState) => providerState.id === "cockroachdb",
+  );
+  if (cockroachState?.connection !== "CONNECTED") {
+    return { ready: false, reason: "ENVIRONMENT_MARKER_NOT_CONNECTED" };
+  }
+  try {
+    const capability = await vectorMemoryProvider.checkCapability();
+    return { ready: true, capabilityState: capability.capabilityState };
+  } catch {
+    // The specific database reason is deliberately not surfaced publicly.
+    return { ready: false, reason: "CAPABILITY_NOT_ACTIVATED" };
+  }
+}
+
+/**
+ * Map a provider failure to an exact public status without leaking internals.
+ * Unrecognized codes become a generic 503, never a database message.
+ */
+function memoryErrorToPublicError(error) {
+  const mapping = new Map([
+    ["INVALID_INPUT", [400, "INVALID_REQUEST"]],
+    ["INVALID_IDEMPOTENCY_KEY", [428, "IDEMPOTENCY_KEY_REQUIRED"]],
+    ["IDEMPOTENCY_CONFLICT", [409, "IDEMPOTENCY_KEY_CONFLICT"]],
+    ["RECEIPT_NOT_FOUND", [404, "RECEIPT_NOT_FOUND"]],
+    ["SESSION_NOT_FOUND", [409, "SESSION_NOT_READY"]],
+    ["PROJECTION_NOT_ACTIVE", [409, "PROJECTION_NOT_ACTIVE"]],
+    ["SCENARIO_UNAVAILABLE", [503, "LIVE_PROVIDERS_NOT_CONNECTED"]],
+    ["CAPABILITY_NOT_ACTIVATED", [503, "LIVE_PROVIDERS_NOT_CONNECTED"]],
+    ["CAPABILITY_INVALID", [503, "LIVE_PROVIDERS_NOT_CONNECTED"]],
+  ]);
+  const [statusCode, code] = mapping.get(error?.code) ?? [
+    503,
+    "LIVE_PROVIDERS_NOT_CONNECTED",
+  ];
+  const safeMessage =
+    statusCode === 503
+      ? "The reviewed live memory providers are not connected."
+      : String(error?.message ?? "The request could not be completed.");
+  return new PublicApiError(statusCode, code, safeMessage);
+}
+
+/**
+ * Execute one of the four write checkpoints.
+ *
+ * Every response is assembled field by field from provider output, never
+ * spread from a database row, so a future column cannot widen the public
+ * surface. `protectedFieldsReturned` is always zero: the disclosure path reads
+ * no protected value, so there is none to return.
+ */
+async function executeMemoryRoute({
+  resolvedRoute,
+  requestBody,
+  event,
+  configuration,
+  requestId,
+  providerStates,
+  vectorMemoryProvider,
+}) {
+  const idempotencyKey = getIdempotencyKey(event);
+  const basePayload = {
+    ...buildBasePayload(true, requestId),
+    buildStage: configuration.buildStage,
+    deploymentEvidence: configuration.deploymentEvidence,
+    releaseCommit: configuration.releaseCommit,
+    providers: providerStates,
+    protectedFieldsReturned: 0,
+  };
+
+  try {
+    if (resolvedRoute.name === "startRun") {
+      const created = await vectorMemoryProvider.createRun({
+        agentIdentifier: requestBody.agentDidz ?? CANONICAL_SCENARIO.agentDidz,
+        idempotencyKey,
+        transportRequestId: requestId,
+      });
+      return {
+        statusCode: created.replayed ? 200 : 201,
+        payload: {
+          ...basePayload,
+          runId: created.runId,
+          runState: created.runState,
+          replayed: created.replayed,
+          session: { sessionId: created.sessionId, ordinal: "A", state: created.sessionState },
+        },
+      };
+    }
+
+    if (resolvedRoute.name === "closeSession") {
+      const closed = await vectorMemoryProvider.closeSessionAndBuildProjection({
+        runId: resolvedRoute.parameters.runId,
+        idempotencyKey,
+        transportRequestId: requestId,
+        corpusEntries: loadMemoryCorpusEntries(),
+      });
+      return {
+        statusCode: 200,
+        payload: {
+          ...basePayload,
+          runId: resolvedRoute.parameters.runId,
+          replayed: closed.replayed,
+          receiptId: closed.receiptId,
+          projectionGenerationId: closed.projectionGenerationId,
+          storedSummaryCount: closed.storedSummaryCount,
+          embeddingModel: { id: SYNTHETIC_EMBEDDING_MODEL_ID, evidence: "MOCK" },
+        },
+      };
+    }
+
+    if (resolvedRoute.name === "recall") {
+      const queryEmbedding = generateSyntheticEmbedding(requestBody.query);
+      const recalled = await vectorMemoryProvider.recall({
+        runId: resolvedRoute.parameters.runId,
+        idempotencyKey,
+        transportRequestId: requestId,
+        queryVectorLiteral: toVectorLiteral(queryEmbedding.embedding),
+        queryText: queryEmbedding.canonicalInput,
+      });
+      return {
+        statusCode: 200,
+        payload: {
+          ...basePayload,
+          runId: resolvedRoute.parameters.runId,
+          replayed: recalled.replayed,
+          receiptId: recalled.receiptId,
+          query: queryEmbedding.canonicalInput,
+          matches: recalled.matches,
+          embeddingModel: { id: SYNTHETIC_EMBEDDING_MODEL_ID, evidence: "MOCK" },
+        },
+      };
+    }
+
+    if (resolvedRoute.name === "action") {
+      if (requestBody.action !== "attempt_protected_disclosure") {
+        throw new PublicApiError(
+          503,
+          "LIVE_PROVIDERS_NOT_CONNECTED",
+          "Only the protected-disclosure attempt is available in this slice.",
+        );
+      }
+      const denial = await vectorMemoryProvider.recordDisclosureDenial({
+        runId: resolvedRoute.parameters.runId,
+        idempotencyKey,
+        transportRequestId: requestId,
+        requestedProtectedFieldNames: PROTECTED_FIELD_NAMES_REFUSED,
+      });
+      return {
+        statusCode: 200,
+        payload: {
+          ...basePayload,
+          runId: resolvedRoute.parameters.runId,
+          action: "attempt_protected_disclosure",
+          replayed: denial.replayed,
+          receiptId: denial.receiptId,
+          result: {
+            kind: "DISCLOSURE_DENIED",
+            reason:
+              "The requesting agent holds no authority grant for protected fields on this resource.",
+            requestedProtectedFields: denial.requestedProtectedFieldNames,
+          },
+          // The refusal is enforced by code and by a database CHECK. No
+          // protected value is ever read, so none can be returned.
+          protectedFieldsReturned: denial.protectedFieldsReturned,
+        },
+      };
+    }
+  } catch (error) {
+    if (error instanceof PublicApiError) {
+      throw error;
+    }
+    throw memoryErrorToPublicError(error);
+  }
+
+  throw new PublicApiError(404, "ROUTE_NOT_FOUND", "The requested route does not exist.");
+}
+
 function unavailableOperationPayload(configuration, requestId, providerStates) {
   return {
     ...buildBasePayload(false, requestId),
@@ -667,6 +917,7 @@ async function dispatchRequest(
   configuration,
   requestId,
   cockroachProvider,
+  vectorMemoryProvider,
 ) {
   assertNoQueryParameters(event);
 
@@ -695,9 +946,18 @@ async function dispatchRequest(
     assertBoundedIdentifier(resolvedRoute.parameters.receiptId, "receiptId");
   }
 
-  const providerStates = ["health", "status", "scenarios"].includes(
-    resolvedRoute.name,
-  )
+  // The read-only routes always resolve live provider states. A mutation route
+  // resolves them ONLY when a vector-memory provider is deployed, because the
+  // gate needs the environment marker before it may permit a write.
+  //
+  // When no memory provider is deployed, which is the fail-closed default, a
+  // blocked mutation performs no probe and reports the baseline row exactly as
+  // it always has. That keeps blocked routes from touching the database at all.
+  const resolvesLiveProviders =
+    ["health", "status", "scenarios"].includes(resolvedRoute.name) ||
+    vectorMemoryProvider !== undefined;
+
+  const providerStates = resolvesLiveProviders
     ? await buildReadOnlyProviderStates(
         configuration,
         requestId,
@@ -771,13 +1031,49 @@ async function dispatchRequest(
   }
 
   if (resolvedRoute.name === "receipt") {
+    const readiness = await resolveMemoryReadiness(
+      vectorMemoryProvider,
+      providerStates,
+    );
+    if (!readiness.ready) {
+      return {
+        statusCode: 503,
+        payload: unavailableOperationPayload(
+          configuration,
+          requestId,
+          providerStates,
+        ),
+      };
+    }
+    let stored;
+    try {
+      stored = await vectorMemoryProvider.fetchReceipt({
+        receiptId: resolvedRoute.parameters.receiptId,
+      });
+    } catch (error) {
+      throw memoryErrorToPublicError(error);
+    }
     return {
-      statusCode: 503,
-      payload: unavailableOperationPayload(
-        configuration,
-        requestId,
-        providerStates,
-      ),
+      statusCode: 200,
+      payload: {
+        ...buildBasePayload(true, requestId),
+        buildStage: configuration.buildStage,
+        deploymentEvidence: configuration.deploymentEvidence,
+        releaseCommit: configuration.releaseCommit,
+        receipt: {
+          receiptId: stored.receiptId,
+          runId: stored.runId,
+          scenarioId: CANONICAL_SCENARIO.scenarioId,
+          operation: stored.operation,
+          receiptState: stored.receiptState,
+          createdAt: stored.createdAt,
+          completedAt: stored.completedAt,
+          transportRequestId: stored.transportRequestId,
+          matches: stored.matches,
+          protectedFieldsReturned: stored.protectedFieldsReturned,
+        },
+        providers: providerStates,
+      },
     };
   }
 
@@ -790,6 +1086,22 @@ async function dispatchRequest(
     validateRecallBody(requestBody);
   } else if (resolvedRoute.name === "action") {
     validateActionBody(requestBody);
+  }
+
+  const memoryReadiness = await resolveMemoryReadiness(
+    vectorMemoryProvider,
+    providerStates,
+  );
+  if (memoryReadiness.ready) {
+    return executeMemoryRoute({
+      resolvedRoute,
+      requestBody,
+      event,
+      configuration,
+      requestId,
+      providerStates,
+      vectorMemoryProvider,
+    });
   }
 
   return {
@@ -812,7 +1124,7 @@ async function dispatchRequest(
  * masquerading as a live CockroachDB, Bedrock, or Midnight result. Tests may
  * inject the narrow read-only CockroachDB probe without enabling mutations.
  */
-export function createHandler({ cockroachProvider } = {}) {
+export function createHandler({ cockroachProvider, vectorMemoryProvider } = {}) {
   return async function configuredHandler(event) {
     const configuration = readConfiguration();
     const requestId = getRequestId(event);
@@ -825,6 +1137,7 @@ export function createHandler({ cockroachProvider } = {}) {
         configuration,
         requestId,
         cockroachProvider,
+        vectorMemoryProvider,
       );
       return createJsonResponse(
         configuration,

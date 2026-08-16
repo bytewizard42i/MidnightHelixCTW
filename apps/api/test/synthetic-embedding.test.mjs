@@ -237,3 +237,16 @@ test("the corpus carries flagged entities for the denial scenario", async () => 
     assert.match(villain.publicSafeSummary, /flagged by TestTown review/);
   }
 });
+
+test("the deployable corpus copy matches the canonical fixture byte for byte", async () => {
+  // The Lambda package contains only `apps/api`, so the runtime cannot reach
+  // the fixtures directory and needs its own copy. Duplication is only safe if
+  // drift is impossible, so this asserts the two files are identical. Both are
+  // written by `scripts/build-memory-corpus.mjs` in one run.
+  const canonical = await readFile(CORPUS_URL, "utf8");
+  const deployable = await readFile(
+    new URL("../src/memory-corpus.json", import.meta.url),
+    "utf8",
+  );
+  assert.equal(deployable, canonical);
+});
