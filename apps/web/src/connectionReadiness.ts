@@ -9,6 +9,23 @@ export const REQUIRED_SYNTHETIC_SCENARIO_ID =
 
 const RELEASE_COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 
+/**
+ * The unlock signal for the guided journey. The journey the browser drives is
+ * exactly the five-route synthetic memory slice, so the slice signal unlocks
+ * it. Global readiness also unlocks it, for the future day every provider is
+ * promoted. Anything else stays locked.
+ */
+export function statusPermitsMemoryJourney(
+  status: Pick<StatusResponse, "readyForMutations" | "memorySlice"> | null,
+): boolean {
+  if (!status) {
+    return false;
+  }
+  return (
+    status.readyForMutations === true || status.memorySlice?.available === true
+  );
+}
+
 export type MutationReadinessReason =
   | "ready"
   | "health-not-ok"
@@ -90,10 +107,10 @@ export function evaluateMutationReadiness({
       "Health and operational status did not report the same canonical release commit. Judge actions remain disabled.",
     );
   }
-  if (status.readyForMutations !== true) {
+  if (!statusPermitsMemoryJourney(status)) {
     return notReady(
       "mutations-not-ready",
-      "The API health and status endpoints responded, but operational status did not report readyForMutations: true. Judge actions remain disabled.",
+      "The API responded, but neither global mutation readiness nor the reviewed memory slice is available. Judge actions remain disabled.",
     );
   }
   if (!scenarios) {

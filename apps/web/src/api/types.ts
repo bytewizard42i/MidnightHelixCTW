@@ -52,6 +52,18 @@ export interface StatusResponse extends JsonObject {
   readonly releaseCommit?: string;
   readonly providers?: JsonValue[];
   readonly readyForMutations?: boolean;
+  /**
+   * The narrow five-route memory-slice signal. Distinct from global
+   * readiness on purpose: the API keeps readyForMutations false until every
+   * deferred provider earns promotion, while this reports only whether the
+   * reviewed synthetic memory journey would pass its own gate.
+   */
+  readonly memorySlice?: {
+    readonly [key: string]: JsonValue | undefined;
+    readonly available?: boolean;
+    readonly scope?: string;
+    readonly embeddingEvidence?: string;
+  };
 }
 
 export interface ScenarioCatalogEntry extends JsonObject {

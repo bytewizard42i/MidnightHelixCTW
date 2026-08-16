@@ -19,6 +19,7 @@ import {
   evaluateMutationReadiness,
   operationCompletionRemainsReady,
   REQUIRED_SYNTHETIC_SCENARIO_ID,
+  statusPermitsMemoryJourney,
 } from "./connectionReadiness";
 import {
   EvidenceDrawer,
@@ -416,8 +417,9 @@ export default function App() {
         requestGeneration: readinessGenerationAtRequestStart,
         currentGeneration: connectionRequestGateReference.current.current(),
         connectionReady: connectionStateReference.current.kind === "ready",
-        statusReadyForMutations:
-          statusAtRequestStart?.readyForMutations === true,
+        statusReadyForMutations: statusPermitsMemoryJourney(
+          statusAtRequestStart,
+        ),
         requestReleaseCommit,
         currentReleaseCommit: statusAtRequestStart?.releaseCommit,
         runReleaseCommit: runContextAtRequestStart?.releaseCommit,
@@ -490,7 +492,7 @@ export default function App() {
           requestGeneration: readinessGenerationAtRequestStart,
           currentGeneration: connectionRequestGateReference.current.current(),
           connectionReady: connectionStateReference.current.kind === "ready",
-          statusReadyForMutations: currentStatus?.readyForMutations === true,
+          statusReadyForMutations: statusPermitsMemoryJourney(currentStatus),
           requestReleaseCommit,
           currentReleaseCommit: currentStatus?.releaseCommit,
           runReleaseCommit: runContextAtRequestStart?.releaseCommit,
@@ -560,8 +562,9 @@ export default function App() {
         requestGeneration: readinessGenerationAtRequestStart,
         currentGeneration: connectionRequestGateReference.current.current(),
         connectionReady: connectionStateReference.current.kind === "ready",
-        statusReadyForMutations:
-          statusAtRequestStart?.readyForMutations === true,
+        statusReadyForMutations: statusPermitsMemoryJourney(
+          statusAtRequestStart,
+        ),
         requestReleaseCommit,
         currentReleaseCommit: statusAtRequestStart?.releaseCommit,
         runReleaseCommit: runContextAtRequestStart.releaseCommit,
@@ -584,7 +587,7 @@ export default function App() {
           requestGeneration: readinessGenerationAtRequestStart,
           currentGeneration: connectionRequestGateReference.current.current(),
           connectionReady: connectionStateReference.current.kind === "ready",
-          statusReadyForMutations: currentStatus?.readyForMutations === true,
+          statusReadyForMutations: statusPermitsMemoryJourney(currentStatus),
           requestReleaseCommit,
           currentReleaseCommit: currentStatus?.releaseCommit,
           runReleaseCommit: runContextAtRequestStart.releaseCommit,
@@ -888,7 +891,8 @@ export default function App() {
         onFetchReceipt={
           runContext?.receiptId &&
           connection.kind === "ready" &&
-          statusResponse?.readyForMutations === true &&
+          statusResponse !== null &&
+          statusPermitsMemoryJourney(statusResponse) &&
           statusResponse.releaseCommit === runContext.releaseCommit &&
           !operationPending
             ? fetchReceipt

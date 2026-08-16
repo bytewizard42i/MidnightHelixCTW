@@ -473,3 +473,55 @@ test("the memory slice never promotes the overall application", async () => {
     assert.match(aws.label, /^Helix Runtime Bridge/);
   });
 });
+
+test("status reports the memory slice as available when the gate would open", async () => {
+  await withLambdaEnvironment(async () => {
+    const handler = createHandler({
+      cockroachProvider: connectedCockroachProvider(),
+      vectorMemoryProvider: stubMemoryProvider(),
+    });
+    const response = await invoke(
+      handler,
+      buildEvent({ method: "GET", path: "/api/v1/status" }),
+    );
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.memorySlice.available, true);
+    assert.equal(response.body.memorySlice.embeddingEvidence, "MOCK");
+    assert.deepEqual(response.body.memorySlice.routes, [
+      "create_run",
+      "close_session",
+      "recall",
+      "attempt_protected_disclosure",
+      "fetch_receipt",
+    ]);
+    // The slice signal must never masquerade as global readiness.
+    assert.equal(response.body.readyForMutations, false);
+    assert.equal(response.body.currentAvailability, "NOT_CONNECTED");
+  });
+});
+
+test("status reports the memory slice as unavailable without an activated capability", async () => {
+  await withLambdaEnvironment(async () => {
+    const handler = createHandler({
+      cockroachProvider: connectedCockroachProvider(),
+      vectorMemoryProvider: stubMemoryProvider({ capabilityFails: true }),
+    });
+    const response = await invoke(
+      handler,
+      buildEvent({ method: "GET", path: "/api/v1/status" }),
+    );
+    assert.equal(response.body.memorySlice.available, false);
+  });
+});
+
+test("status omits no baseline field when no memory provider exists", async () => {
+  await withLambdaEnvironment(async () => {
+    const handler = createHandler({ cockroachProvider: connectedCockroachProvider() });
+    const response = await invoke(
+      handler,
+      buildEvent({ method: "GET", path: "/api/v1/status" }),
+    );
+    assert.equal(response.body.memorySlice.available, false);
+    assert.equal(response.body.readyForMutations, false);
+  });
+});

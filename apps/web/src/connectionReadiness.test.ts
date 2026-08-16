@@ -3,6 +3,7 @@ import {
   evaluateMutationReadiness,
   operationCompletionRemainsReady,
   REQUIRED_SYNTHETIC_SCENARIO_ID,
+  statusPermitsMemoryJourney,
 } from "./connectionReadiness";
 
 const RELEASE_COMMIT = "0123456789abcdef0123456789abcdef01234567";
@@ -207,5 +208,58 @@ describe("operationCompletionRemainsReady", () => {
         runReleaseCommit: `1${RELEASE_COMMIT.slice(1)}`,
       }),
     ).toBe(false);
+  });
+});
+
+describe("statusPermitsMemoryJourney", () => {
+  it("unlocks on the narrow memory-slice signal without global readiness", () => {
+    expect(
+      statusPermitsMemoryJourney({
+        readyForMutations: false,
+        memorySlice: { available: true },
+      }),
+    ).toBe(true);
+  });
+
+  it("unlocks on global readiness for the future fully-promoted day", () => {
+    expect(
+      statusPermitsMemoryJourney({ readyForMutations: true }),
+    ).toBe(true);
+  });
+
+  it("stays locked when neither signal is present", () => {
+    expect(statusPermitsMemoryJourney(null)).toBe(false);
+    expect(statusPermitsMemoryJourney({ readyForMutations: false })).toBe(false);
+    expect(
+      statusPermitsMemoryJourney({
+        readyForMutations: false,
+        memorySlice: { available: false },
+      }),
+    ).toBe(false);
+  });
+
+  it("treats a malformed slice signal as locked, never as open", () => {
+    expect(
+      statusPermitsMemoryJourney({
+        readyForMutations: false,
+        memorySlice: {},
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("evaluateMutationReadiness with the memory slice", () => {
+  it("reports ready when the slice is available even though global readiness is false", () => {
+    expect(
+      evaluateMutationReadiness({
+        health: readyHealth,
+        status: {
+          ...readyStatus,
+          readyForMutations: false,
+          memorySlice: { available: true },
+        },
+        scenarios: readyScenarios,
+      }).ready,
+    ).toBe(true);
   });
 });
