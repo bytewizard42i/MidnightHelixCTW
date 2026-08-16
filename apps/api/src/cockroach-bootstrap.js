@@ -11,6 +11,10 @@ import {
   normalizeCertificateAuthorityBundle,
 } from "./cockroach-query-executor.js";
 import { MHELIX_ENVIRONMENT_MARKER_COMMITMENT_HEX } from "./environment-marker.js";
+import { Pool } from "pg";
+
+import { CANONICAL_SCENARIO } from "./constants.js";
+import { createVectorMemoryProvider } from "./vector-memory-provider.js";
 
 export const MHELIX_COCKROACH_SECRET_SCHEMA_VERSION =
   "mhelixctw/cockroach-secret/v1";
@@ -317,5 +321,147 @@ export function createLazyCockroachDbProvider(options = {}) {
         throw new Error("CockroachDB provider probe failed closed.");
       }
     },
+  });
+}
+
+/**
+ * Lazy factory for the vector-memory provider, mirroring the probe factory
+ * above: nothing touches the network until the first call, every failure is
+ * cached briefly and surfaces as a thrown error, and a thrown error means the
+ * handler's memory gate simply stays closed.
+ *
+ * The provider gets its own bounded pool rather than reusing the probe
+ * executor, because that executor is deliberately locked to one canonical
+ * read-only statement and must stay that way.
+ */
+export function createLazyVectorMemoryProvider(options = {}) {
+  const configuration = requireObject(options, "options");
+  const environment = configuration.environment ?? process.env;
+  const now = configuration.now ?? Date.now;
+  const cooldown = requireInteger(
+    configuration.failureRetryCooldownMilliseconds,
+    5_000,
+    1_000,
+    60_000,
+    "failureRetryCooldownMilliseconds",
+  );
+  const fetchTimeout = requireInteger(
+    configuration.secretFetchTimeoutMilliseconds,
+    1_000,
+    100,
+    2_000,
+    "secretFetchTimeoutMilliseconds",
+  );
+  const clientFactory =
+    configuration.secretsManagerClientFactory ??
+    (() => new SecretsManagerClient({ region: "us-east-1", maxAttempts: 2 }));
+  const poolFactory = configuration.poolFactory ?? defaultVectorMemoryPoolFactory;
+  const providerFactory =
+    configuration.vectorMemoryProviderFactory ?? createVectorMemoryProvider;
+  const scenario = configuration.scenario ?? CANONICAL_SCENARIO;
+
+  let cachedProvider;
+  let inFlight;
+  let retryAfter = 0;
+
+  async function initialize() {
+    const secretArn = environment[SECRET_ENVIRONMENT_NAME];
+    if (
+      typeof secretArn !== "string" ||
+      secretArn.length > 600 ||
+      !ARN_PATTERN.test(secretArn)
+    ) {
+      throw new TypeError("The CockroachDB runtime secret ARN is invalid.");
+    }
+    const releaseCommit = environment.MHELIX_RELEASE_COMMIT;
+    if (typeof releaseCommit !== "string" || !/^[0-9a-f]{40}$/.test(releaseCommit)) {
+      throw new TypeError("The release commit is invalid.");
+    }
+
+    const secretString = await fetchCurrentSecret(
+      clientFactory,
+      secretArn,
+      fetchTimeout,
+    );
+    const secret = parseCockroachRuntimeSecret(secretString);
+    const pool = poolFactory(secret);
+
+    return providerFactory({
+      pool,
+      scenarioId: scenario.scenarioId,
+      releaseCommit,
+      agentIdentifier: scenario.agentDidz,
+      resourceIdentifier: scenario.resourceId,
+      authorityGrantIdentifier: scenario.grantId,
+    });
+  }
+
+  async function resolveProvider() {
+    if (cachedProvider !== undefined) {
+      return cachedProvider;
+    }
+    const currentTime = now();
+    if (currentTime < retryAfter) {
+      throw new Error("Vector-memory initialization is cooling down.");
+    }
+    if (inFlight === undefined) {
+      inFlight = initialize()
+        .then((provider) => {
+          cachedProvider = provider;
+          return provider;
+        })
+        .catch((error) => {
+          retryAfter = now() + cooldown;
+          throw error;
+        })
+        .finally(() => {
+          inFlight = undefined;
+        });
+    }
+    return inFlight;
+  }
+
+  // Every method defers to the lazily initialized provider. A failure at any
+  // stage throws, and the handler's gate treats a throw as "stay closed".
+  const delegate =
+    (methodName) =>
+    async (request) => {
+      const provider = await resolveProvider();
+      return provider[methodName](request);
+    };
+
+  return Object.freeze({
+    checkCapability: delegate("checkCapability"),
+    createRun: delegate("createRun"),
+    closeSessionAndBuildProjection: delegate("closeSessionAndBuildProjection"),
+    recall: delegate("recall"),
+    recordDisclosureDenial: delegate("recordDisclosureDenial"),
+    fetchReceipt: delegate("fetchReceipt"),
+  });
+}
+
+/**
+ * The dedicated vector-memory pool: TLS with the pinned certificate authority
+ * bundle, at most two connections, and bounded timeouts that stay inside the
+ * Lambda response budget. Statements are all schema-qualified, so no search
+ * path is set.
+ */
+function defaultVectorMemoryPoolFactory(secret) {
+  return new Pool({
+    host: secret.host,
+    port: secret.port,
+    database: secret.database,
+    user: secret.username,
+    password: secret.password,
+    ssl: {
+      ca: normalizeCertificateAuthorityBundle(secret.caCertificatePem),
+      rejectUnauthorized: true,
+    },
+    max: 2,
+    connectionTimeoutMillis: 2_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 4_000,
+    query_timeout: 4_500,
+    allowExitOnIdle: true,
   });
 }
