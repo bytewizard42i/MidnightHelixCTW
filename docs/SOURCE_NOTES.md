@@ -9,7 +9,7 @@ project, what was copied, what was rewritten, and what must remain private.
 | --- | --- | --- |
 | DIDzMonolith adapter | `ec1d040d16acbcbd0b607e58ee6fa753e8895e54` | Attributed code baseline |
 | Adapter introduction | `8270051a1d9ae7ba219351318977d9ebe7b412d7` | Eligibility and provenance |
-| TestTownDIDz public remote | `f145c07b3f8abf62c04e1532f67118b5a5aa66b9` | Pinned fictional owner and property snapshot |
+| TestTownDIDz public remote | `d0a0987557cd5c3dc6ebb7dc1c11fc8d9b1cbf03` | Pinned fictional owner and property snapshot, plus the source dossiers behind the public-safe memory corpus. Apache-2.0; the `LICENSE` file was added upstream at this commit so the terms are explicit. |
 | HelixCTW baseline | `b0ed8ccd7c1b95661a6470466eaef269cc4cc07a` | Architecture, evidence notes, and vision media |
 
 ## Code copied with attribution
