@@ -275,3 +275,111 @@ containers were started.
 Then stop. Tell John and Clara the branch, commit, draft PR (Pull Request), and
 check results. Do not merge the pull request. Clara will review the exact diff
 and decide when the supervised running-network phase begins.
+
+## Next task: execute one local Midnight commitment flow
+
+**Status:** authorized by John and Clara on 2026-08-16
+
+This is an execution milestone, not another design exercise. Continue on the
+existing `codex/penny-local-midnight` branch and isolated worktree. Update the
+existing draft PR (Pull Request) number 2. Do not merge it.
+
+The goal is to earn `VERIFIED LOCAL` by running the pinned local network,
+deploying the compiled smoke contract, submitting one randomized commitment,
+and proving the ledger readback matches. This does not earn
+`LIVE MIDNIGHT TEST NETWORK`, because no public Midnight network is involved.
+
+### Authority and allowed scope
+
+Keep the source-authority order and retired-integration prohibition above.
+Penny may edit only:
+
+- `local-midnight/**`;
+- `docs/archive/midnight/2026-08-16-local-environment-rehearsal.md`.
+
+Penny may run only the local `mhelix-local-midnight` Docker Compose project and
+local development commands needed for this proof. Do not touch AWS (Amazon Web
+Services), CockroachDB, TaskFence, another HelixCTW repository, a public
+Midnight network, or any credential-bearing service.
+
+### Checkpoint 1: prove the local network is healthy
+
+1. Confirm Docker Desktop is running, Docker Compose responds, and at least
+   4 GiB (gibibytes) of memory is available for Docker and WSL (Windows
+   Subsystem for Linux) together.
+2. Inspect ports `9944`, `8088`, and `6300` before starting anything. Do not
+   stop unrelated containers. If John's older Midnight stack owns a required
+   port, stop only that exact Compose project gracefully and do not remove its
+   volumes.
+3. If Docker communication fails, tell John: `Check that Docker is on and
+   running.` Do not diagnose WSL (Windows Subsystem for Linux) integration as
+   disabled without independent evidence.
+4. Start only `mhelix-local-midnight` with the committed Compose file.
+5. Wait with a bounded timeout for the node, indexer, and proof server to become
+   healthy. Verify all three endpoints from the host, not only container-state
+   labels.
+6. Record sanitized versions, image digests, health results, elapsed time, and
+   any non-secret warning in the existing rehearsal archive.
+
+If this checkpoint needs source fixes, commit them separately as:
+
+`fix(midnight): make local devnet healthy`
+
+If any service remains unhealthy, stop there, label the result `BLOCKED`, push
+the diagnostic commit if useful, and report the exact non-secret failure.
+
+### Checkpoint 2: execute one real contract transaction
+
+Proceed only after all three local services are healthy.
+
+1. Replace the `PROPOSED` wallet, deployment, transaction, and readback blocks
+   in `local-midnight/smoke-test.mts` with executable code verified against the
+   current official examples, installed types, and Midnight Expert guidance.
+   A raw SDK (Software Development Kit) flow or the exact-pinned testkit may be
+   used, whichever produces the smaller verified implementation.
+2. Keep the genesis development seed and private-state password only in the
+   current process environment. Never print them, write them to a file, place
+   them in command history, or include them in Git.
+3. Compile the committed Compact contract with
+   `/home/js/.local/bin/compact`. Do not skip proving-key generation.
+4. Create or synchronize the local development wallet and ensure it has the
+   local fee resource required by the official devnet flow.
+5. Deploy the smoke contract to the local network.
+6. Generate one fresh 32-byte random commitment, submit
+   `recordCommitment`, and wait for final local confirmation.
+7. Read the public ledger state through the indexer. Fail closed unless the
+   count is exactly one and the stored commitment exactly matches the submitted
+   commitment.
+8. Emit one sanitized JSON (JavaScript Object Notation) receipt containing only
+   the local network identifier, contract address, transaction identifier,
+   block reference, circuit name, public commitment, source commit, tool
+   versions, image versions, and pass/fail booleans. Include no seed, key,
+   password, witness, protected state, or reconstructible secret.
+9. Run the proof from a clean local chain a second time if practical. If not,
+   record that repeatability remains unverified.
+
+### Required gates before the second commit
+
+- all three services report healthy;
+- `npm ci --ignore-scripts` passes inside `local-midnight/`;
+- the TypeScript type check passes;
+- Compact compilation passes without skip flags;
+- the end-to-end smoke command exits zero;
+- the ledger count and commitment comparisons both pass;
+- repository documentation links pass;
+- `git diff --check` passes;
+- sensitive-value and generated-artifact scans pass;
+- `git status --short` contains only authorized paths.
+
+Update the archive truthfully. Use `VERIFIED LOCAL` only for evidence actually
+executed against this local network. Keep public-network, AWS (Amazon Web
+Services), CockroachDB, and production claims unchanged.
+
+Commit the successful transaction milestone as:
+
+`test(midnight): prove local commitment flow`
+
+Push the existing branch, update draft PR (Pull Request) number 2 with exact
+commands and sanitized results, then stop. Leave the local stack stopped but do
+not remove unrelated containers or another project's volumes. Tell John and
+Clara the two checkpoint results and do not merge the PR (Pull Request).
