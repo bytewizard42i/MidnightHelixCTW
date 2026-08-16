@@ -3,7 +3,7 @@
 **Owner:** Penny, working under Clara's sequencing for John
 **Repository:** `/home/js/DIDzMonolith/MidnightHelixCTW` only
 **Updated:** 2026-08-16
-**Current mode:** review first, repository read-only, temporary artifacts allowed
+**Current mode:** write-enabled only in Penny's isolated worktree and authorized paths
 
 This queue gives Penny useful independent work without colliding with Clara's
 active CockroachDB-to-Lambda security and deployment-source milestone. Penny
@@ -109,3 +109,169 @@ For this task, implement only what can be verified without starting the
 network. Label unexecuted deployment and transaction work `PROPOSED`.
 
 ### 6. Deliver review artifacts
+- Save the full source-and-version plan at
+  `/tmp/PENNY_MIDNIGHTHELIXCTW_LOCAL_ENVIRONMENT_PLAN.md`.
+- Save the candidate tree and its focused rehearsal report under
+  `/tmp/midnighthelixctw-local-midnight-candidate`.
+- Record exact commands, versions, generated-file inventory, checks, remaining
+  proposed work, and any non-secret blocker.
+- Clearly separate verified source, verified tooling, proposed runtime work,
+  and blocked work.
+- Leave the active repository unchanged unless John and Clara explicitly
+  authorize the next write-enabled milestone.
+
+## Rehearsal result
+
+The disposable rehearsal is complete. Penny verified the pinned Compose
+configuration without starting services, compiled the smoke contract with the
+installed Compact toolchain, type-checked the driver draft against the pinned
+packages, removed a development password literal found by her own scan, and
+left the active repository untouched except for John's explicitly authorized
+handoff note.
+
+The candidate remains disposable at:
+
+`/tmp/midnighthelixctw-local-midnight-candidate/local-midnight`
+
+## Next task: write-enabled local Midnight scaffold pull request
+
+John explicitly authorizes Penny to write for this milestone. The authorization
+is narrow and applies only to an isolated MidnightHelixCTW worktree and the
+paths listed below. It does not authorize changes in the active dirty checkout.
+
+### Branch and worktree
+
+1. Fetch `origin` without changing the active checkout.
+2. Confirm that neither the branch nor worktree already exists.
+3. Create branch `codex/penny-local-midnight` from current `origin/main`.
+4. Create and work only in:
+
+   `/tmp/midnighthelixctw-penny-local-worktree`
+
+5. Open a draft PR (Pull Request) from `codex/penny-local-midnight` to
+   `main` after all gates below pass.
+
+If a branch or worktree with either name already exists, stop and report it.
+Do not delete, reset, overwrite, or reuse an uncertain worktree.
+
+### Authorized repository paths
+
+Penny may add or edit only:
+
+- `local-midnight/**`
+- `docs/archive/midnight/2026-08-16-local-environment-rehearsal.md`
+
+All other repository paths are read-only. In particular, do not edit Lambda,
+AWS (Amazon Web Services), CockroachDB, TaskFence, root package manifests,
+existing architecture ledgers, or another HelixCTW repository.
+
+Record the root Node.js engine observation in the rehearsal archive. Do not
+change the root `package.json` in this pull request.
+
+### Source authority
+
+Use the canonical DIDzM (DIDzMonolith) routing policy:
+
+`/home/js/DIDzMonolith/DIDzMonolith-docs/midnight/MIDNIGHT_SOURCES_OF_TRUTH.md`
+
+Apply this order:
+
+1. Official Midnight documentation defines published meaning.
+2. The current official support matrix defines compatible version pairings.
+3. Kapa may locate official material only when its citations are retained.
+4. Midnight Expert guides development, diagnostics, and verification.
+5. The supported compiler, type checker, tests, and local runtime provide
+   executable evidence.
+6. DIDzM (DIDzMonolith) defines the system integration boundary.
+7. PixyPi coordinates family knowledge and points back to the DIDzM
+   (DIDzMonolith) policy.
+
+Consult:
+
+- `/home/js/PixyPi/MIDNIGHT_REFERENCE_CURRENT.md`
+- `/home/js/PixyPi/docker-setup-notes.md`
+- `/home/js/PixyPi/MIDNIGHT_COMPACT_V030_QUIRKS.md`
+
+Treat the last file as historical guidance only. Its old language range and
+retired Idris/Olanetsoft MCP (Model Context Protocol) workflow must not be
+copied into current instructions. Do not use the retired integration.
+
+### Promotion rules
+
+Promote the reviewed candidate into `local-midnight/`, but do not copy
+temporary build products or private state.
+
+Commit:
+
+- pinned `standalone.yml`;
+- safe `standalone.env.example`;
+- scoped `.gitignore`;
+- plain-language `README.md`;
+- exact-pin `package.json` and its lockfile;
+- `tsconfig.json`;
+- the compiled-and-reviewed Compact source;
+- the TypeScript smoke-driver source;
+- small project-scoped lifecycle scripts when they materially reduce operator
+  error.
+
+Do not commit:
+
+- `node_modules/`;
+- `.state/`;
+- generated proving keys or compiled artifacts;
+- rendered Compose output;
+- logs;
+- wallet seeds, private keys, passwords, witnesses, credentials, or
+  reconstructible protected data.
+
+The Compose project name and container names must remain unique to
+MidnightHelixCTW. All published ports must bind to `127.0.0.1`. Document that
+John's older local Midnight stack uses the same host ports and that only one
+stack may run at a time.
+
+### Required checks
+
+Run without starting the Midnight services:
+
+- `docker compose -f local-midnight/standalone.yml config`;
+- `npm ci --ignore-scripts` inside `local-midnight/`;
+- the local TypeScript type-check command;
+- `/home/js/.local/bin/compact compile` against the committed contract source,
+  writing generated output only to an ignored temporary artifact directory;
+- repository documentation-link verification when the archive note is added;
+- `git diff --check`;
+- a sensitive-value scan across every proposed file;
+- a check proving there is no `:latest` image tag and every host port binds
+  to `127.0.0.1`.
+
+If Docker communication fails, first tell John to check that Docker Desktop is
+on and running. Do not claim WSL (Windows Subsystem for Linux) integration is
+disabled unless that setting is independently verified.
+
+### Evidence and truth labels
+
+The archive note must separate:
+
+- `VERIFIED SOURCE`: file inspection or authoritative citation;
+- `VERIFIED TOOLING`: successful local compile, type check, or Compose parse;
+- `PROPOSED`: anything requiring a running Midnight network;
+- `BLOCKED`: a failed gate with the exact non-secret reason.
+
+This pull request cannot claim `VERIFIED LOCAL`, because the node, indexer,
+proof server, wallet, deployment, transaction, and ledger readback will not
+run in this milestone.
+
+### Commit and handoff
+
+Stage only the authorized paths. Use this commit message:
+
+`feat(midnight): add reproducible local devnet scaffold`
+
+Push only the dedicated branch and open a draft PR (Pull Request). The draft
+description must list the exact version evidence date, files, checks, excluded
+artifacts, unresolved risks, and the explicit statement that no Midnight
+containers were started.
+
+Then stop. Tell John and Clara the branch, commit, draft PR (Pull Request), and
+check results. Do not merge the pull request. Clara will review the exact diff
+and decide when the supervised running-network phase begins.
