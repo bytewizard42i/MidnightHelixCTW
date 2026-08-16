@@ -187,6 +187,70 @@ End-to-end wall time per run (wallet sync through verified readback):
 ≈ 80–90 seconds on the upgraded 16 GB / 12-core WSL VM. Repeatability is
 therefore VERIFIED, not assumed.
 
+**Provenance correction (per Clara's Session 4 review):** the two receipts
+above say `"sourceCommit": "9eff7fb"`, which was the last commit present
+when those runs executed; the executable driver was in the working tree
+that was subsequently committed unchanged as `adb64a2`. They are preserved
+as historical facts. A third run reported in the session log at that time
+had no archived receipt and therefore counted as reported, not durable,
+evidence. From the correction commit onward the driver derives the full
+40-hex-character Git `HEAD` itself, refuses to run when tracked source is
+dirty, and stamps that exact commit — the caller-supplied
+`SMOKE_SOURCE_COMMIT` override has been removed so provenance cannot be
+forged.
+
+**Run 3 (Session 5 correction verification — clean committed tree,
+recoverable reset, provenance-bound), sanitized receipt (exit 0):**
+
+Preconditions verified: tracked tree clean at commit
+`538567850cd7c5b68d5dc0160fe8ea28a120d0b7`
+(`fix(midnight): bind local proof to clean source`); driver printed
+`provenance: clean tracked tree at commit 5385678...` before any network
+work; the recoverable reset ran the new archiver, which correctly reported
+`nothing to archive` (Session 4 had deleted its runtime state before this
+correction existed); after the run, the new client state was preserved to
+the timestamped, git-ignored `state-archive/20260816T124138Z/` folder
+rather than deleted; stack readiness was confirmed by the new bounded wait
+(`ready ... after 5s`).
+
+```json
+{
+  "label": "VERIFIED LOCAL",
+  "networkId": "undeployed",
+  "contractAddress": "56ca034bb204e03252c447151db3ddcb96e355fcbff62bbd1173c9dcb374fc4e",
+  "txId": "00f36308739dbc5dd7eb3f750d143ade7822c857645d2195bf9b9ae430021be98b",
+  "blockHeight": 12,
+  "circuit": "recordCommitment",
+  "publicCommitmentHex": "ac962e473bb8806506e3ff0797bd62fabd9f5c916b604c09582e038b7483b2cb",
+  "checks": { "commitmentCountIsOne": true, "commitmentMatches": true },
+  "sourceCommit": "538567850cd7c5b68d5dc0160fe8ea28a120d0b7",
+  "compiler": "0.31.1",
+  "images": { "node": "1.0.0", "indexer": "4.3.3", "proofServer": "8.1.0" },
+  "timestamp": "2026-08-16T12:40:50.457Z"
+}
+```
+
+Check record for Run 3: Node.js preflight passed (v22.23.2, pinned via
+`.nvmrc`); TypeScript type check exit 0; Compact compile (toolchain
+0.31.1, no skip flags) exit 0; Compose configuration parse exit 0;
+documentation-link verification passed (46 Markdown files); branch diff
+whitespace check clean; sensitive-value scan over the intended diff found
+only the README's own safety-rule prose; receipt `sourceCommit` equals
+`git rev-parse HEAD` exactly; all three `mhelix-*` containers stopped
+after the run. This archive edit was deliberately withheld from correction
+commit `538567850cd7c5b68d5dc0160fe8ea28a120d0b7` and recorded instead in a
+separate later evidence commit, because a receipt cannot truthfully contain
+the final hash of the same commit that contains it. The `sourceCommit`
+above therefore names the exact clean implementation Run 3 exercised, not
+the newer commit that carries this record.
+
+Scope wording per review: the smoke contract is a **local transaction
+canary** — it proves the toolchain and readback path; it is permissionless
+and local-only, and cannot verify that caller-supplied bytes are random,
+safe, authorized, or a cryptographic commitment to private data. It is not
+private DID (Decentralized Identifier) authorization and not production
+privacy.
+
 **Label scope:** `VERIFIED LOCAL` applies to this local disposable network
 only, per the trust boundary
 ([../../MIDNIGHT_TRUST_BOUNDARY.md](../../MIDNIGHT_TRUST_BOUNDARY.md)).
