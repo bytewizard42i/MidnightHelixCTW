@@ -129,14 +129,10 @@ main,
 }
 
 .wordmark__mark {
-  display: grid;
   width: 2rem;
   height: 2rem;
-  place-items: center;
-  color: #07100d;
-  background: var(--green);
-  border-radius: 50% 50% 42% 58%;
-  box-shadow: 0 0 28px rgba(140, 242, 189, 0.28);
+  color: var(--green);
+  filter: drop-shadow(0 0 10px rgba(140, 242, 189, 0.32));
 }
 
 .header-status,
@@ -242,6 +238,16 @@ main,
 
 .hero h1 span {
   color: var(--green);
+}
+
+.hero__art {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  margin: 0 0 0.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(140, 242, 189, 0.15);
+  box-shadow: var(--glow);
 }
 
 .hero__lede {

@@ -669,12 +669,42 @@ export default function App() {
         Skip to the guided proof
       </a>
       <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="MidnightHelixCTW home">
-          <span className="wordmark__mark" aria-hidden="true">H</span>
-          <span>MidnightHelixCTW</span>
+        <a className="wordmark" href="#top" aria-label="HelixCTW home">
+          <svg
+            className="wordmark__mark"
+            viewBox="0 0 64 64"
+            aria-hidden="true"
+          >
+            {/* Eight arrow rays pointing outward */}
+            <g stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="32" y1="23" x2="32" y2="9" />
+              <line x1="39" y1="25" x2="49" y2="15" />
+              <line x1="41" y1="32" x2="55" y2="32" />
+              <line x1="39" y1="39" x2="49" y2="49" />
+              <line x1="32" y1="41" x2="32" y2="55" />
+              <line x1="25" y1="39" x2="15" y2="49" />
+              <line x1="23" y1="32" x2="9" y2="32" />
+              <line x1="25" y1="25" x2="15" y2="15" />
+            </g>
+            {/* Arrowheads at each tip */}
+            <g fill="currentColor">
+              <path d="M32 4 L28 11 L32 9 L36 11 Z" />
+              <path d="M53 11 L45 15 L49 15 L49 19 Z" />
+              <path d="M60 32 L53 28 L55 32 L53 36 Z" />
+              <path d="M53 53 L49 45 L49 49 L45 49 Z" />
+              <path d="M32 60 L36 53 L32 55 L28 53 Z" />
+              <path d="M11 53 L19 49 L15 49 L15 45 Z" />
+              <path d="M4 32 L11 36 L9 32 L11 28 Z" />
+              <path d="M11 11 L19 15 L15 15 L15 19 Z" />
+            </g>
+            {/* Central disc */}
+            <circle cx="32" cy="32" r="15" fill="#07100d" stroke="currentColor" strokeWidth="2" />
+            {/* H monogram */}
+            <path d="M26 24v16M38 24v16M26 32h12" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+          <span>HelixCTW</span>
         </a>
         <div className="header-status">
-          <StatusBadge label="TESTWIRED" compact />
           <StatusBadge label={currentConnectionLabel} compact />
         </div>
       </header>
@@ -682,16 +712,19 @@ export default function App() {
       <main id="top">
         <section
           className="hero"
-          aria-labelledby="hero-title"
+          aria-label="HelixCTW privacy memory proof overview"
           data-narration-key="overview"
           tabIndex={0}
         >
           <div className="hero__copy">
             <p className="eyebrow">CockroachDB × AWS · Privacy memory proof</p>
-            <h1 id="hero-title">
-              The agent found the answer.
-              <span> It never saw the deed.</span>
-            </h1>
+            <img
+              className="hero__art"
+              src="/helixCTW-hero.png"
+              alt="HelixCTW privacy memory architecture"
+              width="1672"
+              height="941"
+            />
             <p className="hero__lede">
               A guided TestWired case showing how durable agent memory can locate
               context, preserve authorization, and return less data instead of more.
@@ -880,7 +913,7 @@ export default function App() {
       </main>
 
       <footer className="site-footer">
-        <p>MidnightHelixCTW · entirely fictional TestWired data</p>
+        <p>HelixCTW · entirely fictional TestWired data</p>
         <p>CockroachDB is memory. Midnight is proof. Authorization still decides.</p>
       </footer>
 
