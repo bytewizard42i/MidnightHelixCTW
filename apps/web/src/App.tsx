@@ -729,6 +729,13 @@ export default function App() {
               A guided TestWired case showing how durable agent memory can locate
               context, preserve authorization, and return less data instead of more.
             </p>
+            <img
+              className="hero__art hero__art--wide"
+              src="/Privacy-Preserving_Protocol_Architecture_Overview.png"
+              alt="Privacy-Preserving Protocol Architecture overview"
+              width="2752"
+              height="1536"
+            />
             <div className="hero__labels" aria-label="Scenario boundaries">
               <StatusBadge label="TESTWIRED" />
               <span className="boundary-chip">SYNTHETIC DATA ONLY</span>
