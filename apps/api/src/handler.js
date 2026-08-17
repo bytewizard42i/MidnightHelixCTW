@@ -762,6 +762,7 @@ async function executeMemoryRoute({
   };
 
   try {
+    console.error("[DIAG] executeMemoryRoute entered:", resolvedRoute.name, "action:", requestBody?.action);
     if (resolvedRoute.name === "startRun") {
       const created = await vectorMemoryProvider.createRun({
         agentIdentifier: requestBody.agentDidz ?? CANONICAL_SCENARIO.agentDidz,
@@ -1212,6 +1213,7 @@ async function dispatchRequest(
     configuration,
     requestId,
   );
+  console.error("[DIAG] readiness:", memoryReadiness.ready, "route:", resolvedRoute.name, "action:", requestBody?.action);
   if (memoryReadiness.ready) {
     return executeMemoryRoute({
       resolvedRoute,
