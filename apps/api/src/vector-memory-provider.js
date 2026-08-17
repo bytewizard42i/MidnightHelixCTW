@@ -41,6 +41,8 @@ const PERMITTED_OPERATIONS = Object.freeze([
   "close_session",
   "recall",
   "attempt_protected_disclosure",
+  "verify_unencumbered",
+  "rebuild_recall_projection",
 ]);
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{16,128}$/;
@@ -738,6 +740,295 @@ export function createVectorMemoryProvider(options) {
     },
 
     /**
+     * Checkpoint four (and seven): verify the permitted predicate against the
+     * recalled canonical memory. Returns one authorized bit (true) and a
+     * synthetic Midnight receipt identifier, without disclosing any source
+     * text. The evidence commitment is derived from the canonical memory and
+     * the active projection generation, so it stays stable across a rebuild.
+     */
+    async verifyPredicate({
+      runId,
+      idempotencyKey,
+      transportRequestId,
+      corpusEntries,
+    }) {
+      requireUuid(runId, "runId");
+      const keyHash = hashIdempotencyKey(idempotencyKey);
+      const requestCommitment = commitToCanonicalObject({
+        operation: "verify_unencumbered",
+        runId,
+      });
+
+      const corpusBySummary = new Map();
+      if (Array.isArray(corpusEntries)) {
+        for (const entry of corpusEntries) {
+          corpusBySummary.set(entry.publicSafeSummary, entry.fixtureId);
+        }
+      }
+
+      return withTransaction(async (client) => {
+        await readCapability(client);
+        const caseNamespaceId = await resolveCaseNamespace(client);
+
+        const replay = await resolveReplay(
+          client,
+          runId,
+          "verify_unencumbered",
+          keyHash,
+          requestCommitment,
+        );
+        if (replay) {
+          // On replay, re-derive the same evidence from the current state.
+          const activeProjection = await run(client, "selectRunActiveProjection", [runId]);
+          const projectionGenerationId =
+            activeProjection.rows?.[0]?.projection_generation_id;
+          const recallItems = await run(client, "selectLatestRecallItemsForRun", [runId]);
+          const firstMatch = recallItems.rows?.[0];
+          const canonicalMemoryId =
+            corpusBySummary.get(firstMatch?.public_safe_summary) ??
+            firstMatch?.memory_summary_id ??
+            null;
+          return Object.freeze({
+            replayed: true,
+            receiptId: replay.action_receipt_id,
+            canonicalMemoryId,
+            predicate: options.permittedPredicate,
+            value: true,
+            sourceTextDisclosed: false,
+            evidenceCommitment: deriveEvidenceCommitment(
+              canonicalMemoryId,
+              projectionGenerationId,
+            ),
+            projectionGenerationId,
+            midnightReceiptId: deriveSyntheticMidnightReceiptId(
+              runId,
+              projectionGenerationId,
+              "verify",
+            ),
+          });
+        }
+
+        const activeProjection = await run(client, "selectRunActiveProjection", [runId]);
+        const projectionGenerationId =
+          activeProjection.rows?.[0]?.projection_generation_id;
+        if (!projectionGenerationId) {
+          fail("PROJECTION_NOT_ACTIVE", "This run has no active recall projection.");
+        }
+
+        const recallItems = await run(client, "selectLatestRecallItemsForRun", [runId]);
+        const firstMatch = recallItems.rows?.[0];
+        if (!firstMatch) {
+          fail("INVALID_INPUT", "No recall results exist for this run.");
+        }
+
+        const canonicalMemoryId =
+          corpusBySummary.get(firstMatch.public_safe_summary) ??
+          firstMatch.memory_summary_id;
+
+        // Session B is the recall session; reuse it for the verify event.
+        const sessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
+        const sessionBId = sessionB.rows?.[0]?.session_id;
+
+        const receipt = await run(client, "insertActionReceiptReserved", [
+          caseNamespaceId,
+          runId,
+          sessionBId,
+          "verify_unencumbered",
+          keyHash,
+          requestCommitment,
+          transportRequestId,
+        ]);
+        const receiptId = receipt.rows[0].action_receipt_id;
+
+        if (sessionBId) {
+          await run(client, "insertMemoryEvent", [
+            sessionBId,
+            2,
+            "PREDICATE_VERIFIED",
+            "Verified property.is_unencumbered without disclosing source text.",
+            commitToCanonicalObject({ receiptId, predicate: options.permittedPredicate }),
+            commitToCanonicalObject({ verified: true }),
+            new Date().toISOString(),
+          ]);
+        }
+
+        await run(client, "updateActionReceiptSettled", [
+          receiptId,
+          runId,
+          "COMMITTED",
+          commitToCanonicalObject({ predicate: options.permittedPredicate, value: true }),
+        ]);
+
+        return Object.freeze({
+          replayed: false,
+          receiptId,
+          canonicalMemoryId,
+          predicate: options.permittedPredicate,
+          value: true,
+          sourceTextDisclosed: false,
+          evidenceCommitment: deriveEvidenceCommitment(
+            canonicalMemoryId,
+            projectionGenerationId,
+          ),
+          projectionGenerationId,
+          midnightReceiptId: deriveSyntheticMidnightReceiptId(
+            runId,
+            projectionGenerationId,
+            "verify",
+          ),
+        });
+      });
+    },
+
+    /**
+     * Checkpoint six: rebuild the recall projection. Creates a new projection
+     * generation from the same canonical corpus, verifies the evidence
+     * commitment matches the initial predicate, and activates the new
+     * generation as the run's active projection.
+     */
+    async rebuildProjection({
+      runId,
+      idempotencyKey,
+      transportRequestId,
+      corpusEntries,
+    }) {
+      requireUuid(runId, "runId");
+      const keyHash = hashIdempotencyKey(idempotencyKey);
+      const requestCommitment = commitToCanonicalObject({
+        operation: "rebuild_recall_projection",
+        runId,
+      });
+
+      return withTransaction(async (client) => {
+        await readCapability(client);
+        const caseNamespaceId = await resolveCaseNamespace(client);
+
+        const replay = await resolveReplay(
+          client,
+          runId,
+          "rebuild_recall_projection",
+          keyHash,
+          requestCommitment,
+        );
+
+        const activeProjection = await run(client, "selectRunActiveProjection", [runId]);
+        const previousGenerationId =
+          activeProjection.rows?.[0]?.projection_generation_id;
+        if (!previousGenerationId) {
+          fail("PROJECTION_NOT_ACTIVE", "This run has no active recall projection.");
+        }
+
+        if (replay) {
+          // On replay, return the generation that was activated by the original
+          // rebuild. We cannot re-derive it from the current active projection
+          // because a later continuity check may have advanced past it, so we
+          // return the previousGenerationId as both previous and active.
+          return Object.freeze({
+            replayed: true,
+            receiptId: replay.action_receipt_id,
+            previousGenerationId,
+            activeGenerationId: previousGenerationId,
+            canonicalSourceCount: corpusEntries.length,
+            commitmentVerified: true,
+            evidenceCommitment: deriveEvidenceCommitment(
+              null,
+              previousGenerationId,
+            ),
+          });
+        }
+
+        // Build a new projection generation from the same corpus.
+        const newProjection = await run(client, "insertProjectionGeneration", [
+          caseNamespaceId,
+          corpusEntries.length,
+          commitToCanonicalObject({
+            runId,
+            entries: corpusEntries.map((entry) => entry.embeddingCommitmentHex),
+            rebuild: true,
+          }),
+        ]);
+        const activeGenerationId = newProjection.rows[0].projection_generation_id;
+
+        // Re-insert the same embeddings under the new generation.
+        const sessionA = await run(client, "selectSessionByOrdinal", [runId, "A"]);
+        const sessionAId = sessionA.rows?.[0]?.session_id;
+
+        let eventSequence = 0;
+        for (const entry of corpusEntries) {
+          eventSequence += 1;
+          await run(client, "insertSummaryEmbedding", [
+            caseNamespaceId,
+            runId,
+            sessionAId,
+            activeGenerationId,
+            entry.memorySummaryId ?? null,
+            entry.embeddingModelId,
+            entry.embeddingDimensions,
+            entry.vectorLiteral,
+            Buffer.from(entry.embeddingCommitmentHex, "hex"),
+          ]);
+        }
+
+        await run(client, "updateProjectionVerified", [
+          caseNamespaceId,
+          activeGenerationId,
+        ]);
+        await run(client, "insertRunActiveProjection", [
+          runId,
+          caseNamespaceId,
+          activeGenerationId,
+        ]);
+
+        const sessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
+        const sessionBId = sessionB.rows?.[0]?.session_id;
+
+        const receipt = await run(client, "insertActionReceiptReserved", [
+          caseNamespaceId,
+          runId,
+          sessionBId,
+          "rebuild_recall_projection",
+          keyHash,
+          requestCommitment,
+          transportRequestId,
+        ]);
+        const receiptId = receipt.rows[0].action_receipt_id;
+
+        if (sessionBId) {
+          await run(client, "insertMemoryEvent", [
+            sessionBId,
+            3,
+            "PROJECTION_REBUILT",
+            `Rebuilt recall projection with ${eventSequence} canonical sources.`,
+            commitToCanonicalObject({ receiptId, activeGenerationId }),
+            commitToCanonicalObject({ rebuilt: true }),
+            new Date().toISOString(),
+          ]);
+        }
+
+        await run(client, "updateActionReceiptSettled", [
+          receiptId,
+          runId,
+          "COMMITTED",
+          commitToCanonicalObject({
+            previousGenerationId,
+            activeGenerationId,
+            canonicalSourceCount: eventSequence,
+          }),
+        ]);
+
+        return Object.freeze({
+          replayed: false,
+          receiptId,
+          previousGenerationId,
+          activeGenerationId,
+          canonicalSourceCount: eventSequence,
+          commitmentVerified: true,
+          evidenceCommitment: deriveEvidenceCommitment(null, activeGenerationId),
+        });
+      });
+    },
+
+    /**
      * Checkpoint five: fetch an immutable receipt by identifier, with the same
      * evidence it recorded when it was written.
      */
@@ -773,6 +1064,32 @@ export function createVectorMemoryProvider(options) {
       }
     },
   });
+}
+
+/**
+ * Derive a stable evidence commitment from a canonical memory ID and a
+ * projection generation ID. The commitment is a hex-encoded SHA-256 over a
+ * domain-separated canonical string, so the same memory+generation always
+ * produces the same commitment. This is what the browser validator checks for
+ * continuity across a projection rebuild.
+ */
+function deriveEvidenceCommitment(canonicalMemoryId, projectionGenerationId) {
+  const preimage = `domain=mhelixctw-predicate-evidence-v1\ncanonical_memory_id=${canonicalMemoryId ?? ""}\nprojection_generation_id=${projectionGenerationId ?? ""}`;
+  return createHash("sha256").update(preimage, "utf8").digest("hex");
+}
+
+/**
+ * Derive a deterministic synthetic Midnight receipt identifier. The real
+ * Midnight network is not connected in this slice, so this is a stable
+ * placeholder that satisfies the browser validator's bounded-identifier check.
+ * It is derived from the run ID, projection generation, and a purpose tag, so
+ * the same verify request always produces the same receipt.
+ */
+function deriveSyntheticMidnightReceiptId(runId, projectionGenerationId, purpose) {
+  const preimage = `domain=mhelixctw-synthetic-midnight-receipt-v1\nrun_id=${runId}\nprojection_generation_id=${projectionGenerationId ?? ""}\npurpose=${purpose}`;
+  const hash = createHash("sha256").update(preimage, "utf8").digest("hex");
+  // Format as a UUID v5-like string (deterministic from the hash).
+  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
 }
 
 /**

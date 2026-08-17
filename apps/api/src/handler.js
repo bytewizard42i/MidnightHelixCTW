@@ -838,6 +838,62 @@ async function executeMemoryRoute({
     }
 
     if (resolvedRoute.name === "action") {
+      if (requestBody.action === "verify_unencumbered") {
+        const verified = await vectorMemoryProvider.verifyPredicate({
+          runId: resolvedRoute.parameters.runId,
+          idempotencyKey,
+          transportRequestId: requestId,
+          corpusEntries: loadMemoryCorpusEntries(),
+        });
+        return {
+          statusCode: 200,
+          payload: {
+            ...basePayload,
+            runId: resolvedRoute.parameters.runId,
+            action: "verify_unencumbered",
+            receiptId: verified.receiptId,
+            result: {
+              kind: "VERIFIED_PREDICATE",
+              predicate: verified.predicate,
+              value: verified.value,
+              sourceTextDisclosed: verified.sourceTextDisclosed,
+              canonicalMemoryId: verified.canonicalMemoryId,
+              evidenceCommitment: verified.evidenceCommitment,
+              projectionGenerationId: verified.projectionGenerationId,
+              midnightReceiptId: verified.midnightReceiptId,
+            },
+            protectedFieldsReturned: 0,
+          },
+        };
+      }
+
+      if (requestBody.action === "rebuild_recall_projection") {
+        const rebuilt = await vectorMemoryProvider.rebuildProjection({
+          runId: resolvedRoute.parameters.runId,
+          idempotencyKey,
+          transportRequestId: requestId,
+          corpusEntries: loadMemoryCorpusEntries(),
+        });
+        return {
+          statusCode: 200,
+          payload: {
+            ...basePayload,
+            runId: resolvedRoute.parameters.runId,
+            action: "rebuild_recall_projection",
+            receiptId: rebuilt.receiptId,
+            result: {
+              kind: "PROJECTION_REBUILT",
+              previousGenerationId: rebuilt.previousGenerationId,
+              activeGenerationId: rebuilt.activeGenerationId,
+              canonicalSourceCount: rebuilt.canonicalSourceCount,
+              commitmentVerified: rebuilt.commitmentVerified,
+              evidenceCommitment: rebuilt.evidenceCommitment,
+            },
+            protectedFieldsReturned: 0,
+          },
+        };
+      }
+
       if (requestBody.action !== "attempt_protected_disclosure") {
         throw new PublicApiError(
           503,

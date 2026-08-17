@@ -290,6 +290,28 @@ SELECT items.memory_summary_id, items.result_rank, items.cosine_distance,
 `;
 
 /**
+ * Select the most recent recall items for a run, ordered by rank. Used by the
+ * verify action to bind the predicate to the canonical memory that was
+ * actually recalled. Joins the embeddings table to recover the source session
+ * and the public-safe summary for fixture ID resolution.
+ */
+const SELECT_LATEST_RECALL_ITEMS_FOR_RUN = `
+SELECT items.memory_summary_id, items.result_rank, items.cosine_distance,
+       items.projection_generation_id, summaries.public_safe_summary,
+       embeddings.session_id
+  FROM mhelix_testwired.mhelix_recall_result_items AS items
+  JOIN mhelix_testwired.mhelix_memory_summaries AS summaries
+    ON summaries.memory_summary_id = items.memory_summary_id
+  JOIN mhelix_testwired.mhelix_memory_summary_embeddings AS embeddings
+    ON embeddings.memory_summary_id = items.memory_summary_id
+   AND embeddings.run_id = items.run_id
+   AND embeddings.projection_generation_id = items.projection_generation_id
+ WHERE items.run_id = $1
+ ORDER BY items.created_at DESC, items.result_rank
+ LIMIT 2
+`;
+
+/**
  * The complete permitted statement catalog. Frozen so no module can add an
  * operation at runtime.
  */
@@ -316,6 +338,7 @@ export const VECTOR_MEMORY_STATEMENTS = Object.freeze({
   insertRecallResultItem: INSERT_RECALL_RESULT_ITEM,
   selectReceiptByIdentifier: SELECT_RECEIPT_BY_IDENTIFIER,
   selectRecallItemsByReceipt: SELECT_RECALL_ITEMS_BY_RECEIPT,
+  selectLatestRecallItemsForRun: SELECT_LATEST_RECALL_ITEMS_FOR_RUN,
 });
 
 /** Statement names permitted to modify data, for the write-gate assertion. */
