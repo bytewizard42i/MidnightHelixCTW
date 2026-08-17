@@ -112,7 +112,13 @@ test("no statement uses SELECT star", () => {
   }
 });
 
-test("only the three reviewed lifecycle transitions may update", () => {
+test("only the four reviewed lifecycle transitions may update", () => {
+  // Reviewed extension (rebuild feature): `updateRunActiveProjection` was
+  // added as the fourth transition because the PRIMARY KEY on `run_id` in
+  // mhelix_run_active_projections deliberately permits ONE binding per run,
+  // so the rebuild drill must repoint the existing row rather than insert a
+  // second one. Its guards are the previous generation identifier (optimistic
+  // concurrency) plus an EXISTS check that the new generation is 'ACTIVE'.
   const updating = statementEntries
     .filter(([, sql]) => /^\s*UPDATE\s/im.test(stripLiterals(sql)))
     .map(([name]) => name)
@@ -120,14 +126,17 @@ test("only the three reviewed lifecycle transitions may update", () => {
   assert.deepEqual(updating, [
     "updateActionReceiptSettled",
     "updateProjectionVerified",
+    "updateRunActiveProjection",
     "updateSessionClosed",
   ]);
   // Every update must be narrowed by a WHERE clause and a state precondition,
-  // so a transition cannot be applied twice or to the wrong row.
+  // so a transition cannot be applied twice or to the wrong row. 'ACTIVE'
+  // joined the vocabulary with the fourth transition: it is the state the
+  // repoint requires of the incoming generation.
   for (const name of updating) {
     const sql = VECTOR_MEMORY_STATEMENTS[name];
     assert.match(sql, /\bWHERE\b/i, `${name} has no WHERE clause`);
-    assert.match(sql, /=\s*'(OPEN|BUILDING|RESERVED)'/, `${name} lacks a state guard`);
+    assert.match(sql, /=\s*'(OPEN|BUILDING|RESERVED|ACTIVE)'/, `${name} lacks a state guard`);
   }
 });
 

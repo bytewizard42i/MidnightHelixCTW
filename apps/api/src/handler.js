@@ -762,7 +762,6 @@ async function executeMemoryRoute({
   };
 
   try {
-    console.log(JSON.stringify({level:"info",code:"DIAG_ROUTE",route:resolvedRoute.name,action:requestBody?.action}));
     if (resolvedRoute.name === "startRun") {
       const created = await vectorMemoryProvider.createRun({
         agentIdentifier: requestBody.agentDidz ?? CANONICAL_SCENARIO.agentDidz,
@@ -931,8 +930,6 @@ async function executeMemoryRoute({
     if (error instanceof PublicApiError) {
       throw error;
     }
-    // Temporary diagnostic: log the real error before mapping it
-    console.log(JSON.stringify({level:"error",code:"DIAG_ERROR",errCode:error?.code,errMsg:error?.message?.slice(0,200)}));
     throw memoryErrorToPublicError(error);
   }
 
@@ -1213,7 +1210,6 @@ async function dispatchRequest(
     configuration,
     requestId,
   );
-  console.log(JSON.stringify({level:"info",code:"DIAG_READINESS",ready:memoryReadiness.ready,route:resolvedRoute.name,action:requestBody?.action}));
   if (memoryReadiness.ready) {
     return executeMemoryRoute({
       resolvedRoute,

@@ -437,6 +437,8 @@ export function createLazyVectorMemoryProvider(options = {}) {
     closeSessionAndBuildProjection: delegate("closeSessionAndBuildProjection"),
     recall: delegate("recall"),
     recordDisclosureDenial: delegate("recordDisclosureDenial"),
+    verifyPredicate: delegate("verifyPredicate"),
+    rebuildProjection: delegate("rebuildProjection"),
     fetchReceipt: delegate("fetchReceipt"),
   });
 }

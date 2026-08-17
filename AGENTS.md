@@ -121,7 +121,17 @@ parameter.
 interpolation, string concatenation, unqualified table references,
 non-contiguous placeholders, destructive verbs, `SELECT *`, any statement that
 would return a stored vector or its commitment, and any `UPDATE` outside the
-three reviewed lifecycle transitions.
+four reviewed lifecycle transitions (`updateRunActiveProjection`, the fourth,
+repoints a run's single active-projection binding during the rebuild drill,
+guarded by the previous generation id and the new generation being ACTIVE).
+
+One more trap in that catalog test: the write-gate list, the UPDATE allowlist,
+and the lazy facade in `cockroach-bootstrap.js` are three separate name lists
+that must all be extended when a provider operation is added. Forgetting the
+facade produces `undefined` at runtime — a generic 503 in Lambda that no
+handler test catches, because handler tests inject a stub provider directly. A
+test in `cockroach-runtime.test.mjs` now pins the facade to the provider's
+real method surface.
 
 Runtime rules in `vector-memory-provider.js`: one serializable transaction per
 logical operation; retry **only** SQLSTATE `40001`, at most three attempts;

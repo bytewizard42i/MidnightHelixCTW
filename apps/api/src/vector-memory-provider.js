@@ -980,11 +980,23 @@ export function createVectorMemoryProvider(options) {
           caseNamespaceId,
           activeGenerationId,
         ]);
-        await run(client, "insertRunActiveProjection", [
+        // Repoint the run's single active-projection binding (PRIMARY KEY on
+        // run_id) from the previous generation to the new one. The statement
+        // guards on the previous generation id and on the new generation being
+        // ACTIVE; zero rows back means a concurrent repoint or an unverified
+        // generation, and the whole transaction must fail closed.
+        const repointed = await run(client, "updateRunActiveProjection", [
           runId,
           caseNamespaceId,
+          previousGenerationId,
           activeGenerationId,
         ]);
+        if (!repointed.rows?.[0]) {
+          fail(
+            "PROJECTION_NOT_ACTIVE",
+            "The active projection changed during the rebuild; nothing was repointed.",
+          );
+        }
 
         const sessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
         const sessionBId = sessionB.rows?.[0]?.session_id;

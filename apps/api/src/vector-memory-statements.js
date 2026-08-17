@@ -163,6 +163,35 @@ SELECT projection_generation_id
 `;
 
 /**
+ * The fourth reviewed lifecycle transition: repoint a run's single active
+ * projection to a newly rebuilt generation.
+ *
+ * The primary key on `run_id` deliberately allows one row per run, so the
+ * rebuild drill cannot INSERT a second binding; it must repoint the existing
+ * one. Two guards keep this transition exact:
+ *   1. `projection_generation_id = $3` is an optimistic-concurrency check on
+ *      the generation being replaced, so a concurrent repoint updates nothing.
+ *   2. The EXISTS clause requires the NEW generation to already be 'ACTIVE'
+ *      (BUILDING generations have not passed verification), so a caller can
+ *      never point a run at an unverified or fabricated generation.
+ */
+const UPDATE_RUN_ACTIVE_PROJECTION = `
+UPDATE mhelix_testwired.mhelix_run_active_projections
+   SET projection_generation_id = $4, bound_at = now()
+ WHERE run_id = $1
+   AND case_namespace_id = $2
+   AND projection_generation_id = $3
+   AND EXISTS (
+     SELECT 1
+       FROM mhelix_testwired.mhelix_projection_generations AS generations
+      WHERE generations.case_namespace_id = $2
+        AND generations.projection_generation_id = $4
+        AND generations.generation_state = 'ACTIVE'
+   )
+RETURNING run_id, projection_generation_id, bound_at
+`;
+
+/**
  * Select all summary embedding metadata for a run under a specific projection
  * generation, so a rebuild can count the canonical sources and re-link them.
  */
@@ -370,6 +399,7 @@ export const VECTOR_MEMORY_STATEMENTS = Object.freeze({
   insertProjectionGeneration: INSERT_PROJECTION_GENERATION,
   updateProjectionVerified: UPDATE_PROJECTION_VERIFIED,
   insertRunActiveProjection: INSERT_RUN_ACTIVE_PROJECTION,
+  updateRunActiveProjection: UPDATE_RUN_ACTIVE_PROJECTION,
   selectRunActiveProjection: SELECT_RUN_ACTIVE_PROJECTION,
   selectEmbeddingsForProjection: SELECT_EMBEDDINGS_FOR_PROJECTION,
   copyEmbeddingsToNewProjection: COPY_EMBEDDINGS_TO_NEW_PROJECTION,
@@ -395,6 +425,7 @@ export const MUTATING_STATEMENT_NAMES = Object.freeze([
   "insertProjectionGeneration",
   "updateProjectionVerified",
   "insertRunActiveProjection",
+  "updateRunActiveProjection",
   "insertSummaryEmbedding",
   "copyEmbeddingsToNewProjection",
   "updateSessionClosed",

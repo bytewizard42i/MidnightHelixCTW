@@ -6,9 +6,11 @@ import test from "node:test";
 
 import {
   createLazyCockroachDbProvider,
+  createLazyVectorMemoryProvider,
   MHELIX_COCKROACH_SECRET_SCHEMA_VERSION,
   parseCockroachRuntimeSecret,
 } from "../src/cockroach-bootstrap.js";
+import { createVectorMemoryProvider } from "../src/vector-memory-provider.js";
 import { createCockroachQueryExecutor } from "../src/cockroach-query-executor.js";
 import {
   MHELIX_COCKROACH_PROBE_STATEMENT,
@@ -586,4 +588,29 @@ test("secret ARN grammar is exact and missing configuration remains lazy", async
     await assert.rejects(lazyProvider.probe(), /failed closed/);
     assert.equal(clientFactoryCalled, false);
   }
+});
+
+test("the lazy vector-memory facade delegates every provider operation", () => {
+  // The facade in `createLazyVectorMemoryProvider` delegates by method NAME.
+  // A provider operation that is missing from that list is simply `undefined`
+  // at runtime, so the handler throws `TypeError` and the error mapper turns
+  // an unrecognized code into a generic 503 LIVE_PROVIDERS_NOT_CONNECTED.
+  //
+  // That failure is invisible to every other test in this suite, because the
+  // handler tests inject a stub provider object directly and never construct
+  // the facade. This test is the only thing pinning the two surfaces together.
+  const realProvider = createVectorMemoryProvider({
+    pool: { connect() {} },
+    scenarioId: "morrow-farmhouse-testwired-v1",
+    releaseCommit: "0".repeat(40),
+  });
+  const facade = createLazyVectorMemoryProvider();
+  const missingFromFacade = Object.keys(realProvider).filter(
+    (operationName) => typeof facade[operationName] !== "function",
+  );
+  assert.deepEqual(
+    missingFromFacade,
+    [],
+    `the lazy facade does not delegate: ${missingFromFacade.join(", ")}`,
+  );
 });
