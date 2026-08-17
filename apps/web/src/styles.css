@@ -552,6 +552,11 @@ main,
   letter-spacing: -0.035em;
 }
 
+.flow-title--full {
+  max-width: none;
+  width: 100%;
+}
+
 .flow-intro > p:last-child,
 .section-note {
   color: var(--muted);
