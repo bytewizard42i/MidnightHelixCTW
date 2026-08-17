@@ -282,6 +282,23 @@ main,
   opacity: 0.78;
 }
 
+/* Source link, sitting between the guided-case note and the architecture
+   diagram so a judge can jump to the repo without scrolling past the proof. */
+.hero__source {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.hero__source a {
+  color: var(--green);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hero__source a:hover {
+  text-decoration: underline;
+}
+
 .case-card {
   position: relative;
   padding: 2rem;

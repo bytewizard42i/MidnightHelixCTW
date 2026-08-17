@@ -739,6 +739,15 @@ export default function App() {
               memory can locate context, preserve authorization, and return less
               data instead of more.
             </p>
+            <p className="hero__source">
+              <a
+                href="https://github.com/bytewizard42i/MidnightHelixCTW"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Source code →
+              </a>
+            </p>
             <img
               className="hero__art hero__art--wide"
               src="/Privacy-Preserving_Protocol_Architecture_Overview.png"
@@ -931,7 +940,12 @@ export default function App() {
 
       <footer className="site-footer">
         <p>HelixCTW · entirely fictional TestWired data</p>
-        <p>CockroachDB is memory. Midnight is proof. Authorization still decides.</p>
+        <p>
+          CockroachDB is memory. Midnight is proof. Authorization still decides. ·{' '}
+          <a href="https://github.com/bytewizard42i" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </p>
       </footer>
 
       <EvidenceDrawer
