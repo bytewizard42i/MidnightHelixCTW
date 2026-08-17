@@ -711,10 +711,15 @@ export function createVectorMemoryProvider(options) {
         ]);
         const receiptId = receipt.rows[0].action_receipt_id;
 
+        // Dynamically compute the next event sequence for this session to
+        // avoid colliding with MEMORY_RECALLED (seq 1) or PREDICATE_VERIFIED
+        // (seq 2) that may already exist on session B.
+        const nextSeq = await run(client, "selectNextEventSequence", [sessionId]);
+        const eventSequence = nextSeq.rows?.[0]?.next_sequence ?? 1;
         // The event records only the NAMES of the fields that were refused.
         await run(client, "insertMemoryEvent", [
           sessionId,
-          2,
+          eventSequence,
           "DISCLOSURE_DENIED",
           `Refused disclosure of ${fieldNames.length} protected field names.`,
           commitToCanonicalObject({ receiptId, fieldNames }),
