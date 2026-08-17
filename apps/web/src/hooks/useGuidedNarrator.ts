@@ -131,7 +131,7 @@ export function useGuidedNarrator(
       };
       const utterance = new SpeechSynthesisUtterance(GUIDED_NARRATION[key]);
       utterance.lang = selectedVoice?.lang ?? "en-GB";
-      utterance.rate = 0.96;
+      utterance.rate = 1.08;
       utterance.pitch = 1;
       if (selectedVoice) {
         utterance.voice = selectedVoice;
