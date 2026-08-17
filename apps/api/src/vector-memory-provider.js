@@ -793,6 +793,8 @@ export function createVectorMemoryProvider(options) {
             corpusBySummary.get(firstMatch?.public_safe_summary) ??
             firstMatch?.memory_summary_id ??
             null;
+          const evidenceGenerationId =
+            firstMatch?.projection_generation_id ?? projectionGenerationId;
           return Object.freeze({
             replayed: true,
             receiptId: replay.action_receipt_id,
@@ -802,7 +804,7 @@ export function createVectorMemoryProvider(options) {
             sourceTextDisclosed: false,
             evidenceCommitment: deriveEvidenceCommitment(
               canonicalMemoryId,
-              projectionGenerationId,
+              evidenceGenerationId,
             ),
             projectionGenerationId,
             midnightReceiptId: deriveSyntheticMidnightReceiptId(
@@ -829,6 +831,14 @@ export function createVectorMemoryProvider(options) {
         const canonicalMemoryId =
           corpusBySummary.get(firstMatch.public_safe_summary) ??
           firstMatch.memory_summary_id;
+
+        // The evidence commitment must stay stable across a projection
+        // rebuild. The recall items were created under the ORIGINAL
+        // projection generation, so the commitment is derived from that
+        // generation — not the currently active one (which may have been
+        // rebuilt). This is what the browser validator checks for
+        // continuity in checkpoint 7.
+        const evidenceGenerationId = firstMatch.projection_generation_id;
 
         // Session B is the recall session; reuse it for the verify event.
         const sessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
@@ -875,7 +885,7 @@ export function createVectorMemoryProvider(options) {
           sourceTextDisclosed: false,
           evidenceCommitment: deriveEvidenceCommitment(
             canonicalMemoryId,
-            projectionGenerationId,
+            evidenceGenerationId,
           ),
           projectionGenerationId,
           midnightReceiptId: deriveSyntheticMidnightReceiptId(
