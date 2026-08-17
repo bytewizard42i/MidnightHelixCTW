@@ -2,7 +2,7 @@ export const NARRATION_DWELL_MILLISECONDS = 650;
 
 export const GUIDED_NARRATION = {
   overview:
-    "Welcome to the Morrow farmhouse privacy proof. The walkthrough uses fictional data and will not unlock a step unless the API reports that its real test providers are ready.",
+    "Welcome to the Morrow farmhouse privacy proof. Though the walkthrough uses fictional data, it will not unlock a step unless the API reports that its real test providers are ready.",
   case:
     "This is a fictional TestTown property. The permitted question is whether it is unencumbered. No deed text belongs in the agent's model context.",
   connection:
