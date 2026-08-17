@@ -17,7 +17,7 @@ import {
 } from "../guidance";
 import { LatestRequestGate } from "../asyncGuards";
 
-const REPEAT_SUPPRESSION_MILLISECONDS = 4_000;
+const REPEAT_SUPPRESSION_MILLISECONDS = 30_000;
 
 function supportsBrowserNarration(): boolean {
   return (

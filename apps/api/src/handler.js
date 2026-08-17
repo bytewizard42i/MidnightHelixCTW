@@ -519,12 +519,10 @@ function getIdempotencyKey(event) {
  * so the denial cannot leak one even in principle.
  */
 const PROTECTED_FIELD_NAMES_REFUSED = Object.freeze([
-  "ein",
-  "stateRegistration",
-  "born",
-  "birthRecordIssuer",
-  "documents",
-  "officers",
+  "deed.full_text",
+  "mortgage.full_record",
+  "owner.birth_date",
+  "owner.private_contact_information",
 ]);
 
 /**

@@ -376,7 +376,12 @@ test("checkpoint four refuses disclosure and returns zero protected fields", asy
 
     // Only field NAMES appear anywhere in the response.
     const serialized = JSON.stringify(response.body);
-    for (const fieldName of ["ein", "born", "documents"]) {
+    for (const fieldName of [
+      "deed.full_text",
+      "mortgage.full_record",
+      "owner.birth_date",
+      "owner.private_contact_information",
+    ]) {
       assert.ok(serialized.includes(fieldName), `expected the name ${fieldName}`);
     }
     // No protected value shapes may appear.

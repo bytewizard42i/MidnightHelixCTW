@@ -664,7 +664,7 @@ export function createVectorMemoryProvider(options) {
       const keyHash = hashIdempotencyKey(idempotencyKey);
       const fieldNames = Array.isArray(requestedProtectedFieldNames)
         ? requestedProtectedFieldNames.filter(
-            (name) => typeof name === "string" && /^[A-Za-z]{1,64}$/.test(name),
+            (name) => typeof name === "string" && /^[A-Za-z][A-Za-z0-9_.]{0,63}$/.test(name),
           )
         : [];
       const requestCommitment = commitToCanonicalObject({
