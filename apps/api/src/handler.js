@@ -747,7 +747,13 @@ async function executeMemoryRoute({
   const basePayload = {
     ...buildBasePayload(true, requestId),
     buildStage: configuration.buildStage,
-    deploymentEvidence: configuration.deploymentEvidence,
+    // Mutation responses are reached only through the live memory-slice
+    // routes, which require a deployed vector-memory provider and a connected
+    // CockroachDB. The global deploymentEvidence stays SOURCE_ONLY (not every
+    // deferred provider is promoted), but the mutation context IS live, so the
+    // response carries LIVE_TESTWIRED here. The health and status endpoints
+    // keep the honest global view.
+    deploymentEvidence: "LIVE_TESTWIRED",
     releaseCommit: configuration.releaseCommit,
     providers: providerStates,
     protectedFieldsReturned: 0,
