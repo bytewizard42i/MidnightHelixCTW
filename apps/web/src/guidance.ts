@@ -8,7 +8,7 @@ export const GUIDED_NARRATION = {
   connection:
     "This status comes from the configured API. Reachable does not mean ready, and disconnected providers keep every operational control locked.",
   checkpoint:
-    "Each checkpoint advances only after the API returns the identifiers required for that operation. A disabled button is a truthful boundary, not a simulated result.",
+    "Each checkpoint advances only after the API returns the identifiers required for that operation.",
   evidence:
     "The evidence drawer shows only allowlisted fields returned by the API. Missing service evidence stays marked not available.",
   providers:
