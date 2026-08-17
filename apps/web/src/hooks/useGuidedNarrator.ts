@@ -18,6 +18,8 @@ import {
 import { LatestRequestGate } from "../asyncGuards";
 
 const REPEAT_SUPPRESSION_MILLISECONDS = 30_000;
+const HOVER_DWELL_MILLISECONDS = 1200;
+const NARRATION_LOCK_MILLISECONDS = 8000;
 
 function supportsBrowserNarration(): boolean {
   return (
@@ -68,6 +70,7 @@ export function useGuidedNarrator(
   const lastSpokenKeyReference = useRef<NarrationKey | null>(null);
   const lastSpokenAtReference = useRef(0);
   const utteranceRequestGateReference = useRef(new LatestRequestGate());
+  const narrationLockUntilReference = useRef(0);
 
   const clearPending = useCallback(() => {
     if (pendingTimerReference.current !== null) {
@@ -131,7 +134,7 @@ export function useGuidedNarrator(
       };
       const utterance = new SpeechSynthesisUtterance(GUIDED_NARRATION[key]);
       utterance.lang = selectedVoice?.lang ?? "en-GB";
-      utterance.rate = 1.4;
+      utterance.rate = 1.6;
       utterance.pitch = 1;
       if (selectedVoice) {
         utterance.voice = selectedVoice;
@@ -141,6 +144,7 @@ export function useGuidedNarrator(
       utterance.onerror = () => setSpeakingIfCurrent(false);
       lastSpokenKeyReference.current = key;
       lastSpokenAtReference.current = currentTime;
+      narrationLockUntilReference.current = currentTime + NARRATION_LOCK_MILLISECONDS;
       setLastKey(key);
       speechSynthesis.speak(utterance);
     },
@@ -153,6 +157,11 @@ export function useGuidedNarrator(
       if (!guideStarted || !enabled || !supported) {
         return;
       }
+      // Don't interrupt active narration — wait for the lock to expire
+      const now = Date.now();
+      if (now < narrationLockUntilReference.current) {
+        return;
+      }
       if (lastSpokenKeyReference.current !== key) {
         utteranceRequestGateReference.current.invalidate();
         window.speechSynthesis.cancel();
@@ -161,7 +170,7 @@ export function useGuidedNarrator(
       pendingTimerReference.current = globalThis.setTimeout(() => {
         pendingTimerReference.current = null;
         speak(key);
-      }, NARRATION_DWELL_MILLISECONDS);
+      }, HOVER_DWELL_MILLISECONDS);
     },
     [clearPending, enabled, guideStarted, speak, supported],
   );
@@ -218,6 +227,8 @@ export function useGuidedNarrator(
       return;
     }
     setEnabled(true);
+    // Lock narration so hover events don't interrupt the welcome
+    narrationLockUntilReference.current = Date.now() + NARRATION_LOCK_MILLISECONDS;
     speak("overview", true);
   }, [speak, supported]);
 
