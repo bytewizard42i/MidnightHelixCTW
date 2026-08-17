@@ -841,9 +841,11 @@ export function createVectorMemoryProvider(options) {
         const receiptId = receipt.rows[0].action_receipt_id;
 
         if (sessionBId) {
+          const nextSeq = await run(client, "selectNextEventSequence", [sessionBId]);
+          const eventSequence = nextSeq.rows?.[0]?.next_sequence ?? 1;
           await run(client, "insertMemoryEvent", [
             sessionBId,
-            2,
+            eventSequence,
             "PREDICATE_VERIFIED",
             "Verified property.is_unencumbered without disclosing source text.",
             commitToCanonicalObject({ receiptId, predicate: options.permittedPredicate }),
@@ -999,9 +1001,11 @@ export function createVectorMemoryProvider(options) {
         const receiptId = receipt.rows[0].action_receipt_id;
 
         if (sessionBId) {
+          const nextSeq = await run(client, "selectNextEventSequence", [sessionBId]);
+          const eventSequence = nextSeq.rows?.[0]?.next_sequence ?? 1;
           await run(client, "insertMemoryEvent", [
             sessionBId,
-            3,
+            eventSequence,
             "PROJECTION_REBUILT",
             `Rebuilt recall projection with ${sourceCount} canonical sources.`,
             commitToCanonicalObject({ receiptId, activeGenerationId }),

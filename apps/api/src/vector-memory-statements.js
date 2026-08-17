@@ -104,6 +104,17 @@ RETURNING memory_event_id, event_sequence
 `;
 
 /**
+ * Get the next available event sequence for a session, so action handlers
+ * don't collide with existing events (recall uses 1, denial uses 2, etc.).
+ * Returns COALESCE(max+1, 1) so an empty session starts at 1.
+ */
+const SELECT_NEXT_EVENT_SEQUENCE = `
+SELECT COALESCE(MAX(event_sequence), 0) + 1 AS next_sequence
+  FROM mhelix_testwired.mhelix_memory_events
+ WHERE session_id = $1
+`;
+
+/**
  * Anchor a summary to an event in the same session. The composite foreign key
  * in migration 001 makes a cross-session anchor impossible.
  */
@@ -354,6 +365,7 @@ export const VECTOR_MEMORY_STATEMENTS = Object.freeze({
   insertSession: INSERT_SESSION,
   selectSessionByOrdinal: SELECT_SESSION_BY_ORDINAL,
   insertMemoryEvent: INSERT_MEMORY_EVENT,
+  selectNextEventSequence: SELECT_NEXT_EVENT_SEQUENCE,
   insertMemorySummary: INSERT_MEMORY_SUMMARY,
   insertProjectionGeneration: INSERT_PROJECTION_GENERATION,
   updateProjectionVerified: UPDATE_PROJECTION_VERIFIED,
