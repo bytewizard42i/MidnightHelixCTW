@@ -83,7 +83,7 @@ RETURNING session_id, session_state, started_at
 `;
 
 const SELECT_SESSION_BY_ORDINAL = `
-SELECT session_id, session_state
+SELECT session_id, session_state, started_at
   FROM mhelix_testwired.mhelix_memory_sessions
  WHERE run_id = $1
    AND session_ordinal = $2
@@ -176,7 +176,7 @@ UPDATE mhelix_testwired.mhelix_memory_sessions
    AND run_id = $2
    AND session_id = $3
    AND session_state = 'OPEN'
-RETURNING session_id, session_state, closed_at
+RETURNING session_id, session_state, started_at, closed_at
 `;
 
 /**

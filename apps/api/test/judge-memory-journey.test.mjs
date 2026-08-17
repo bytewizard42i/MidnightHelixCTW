@@ -66,6 +66,7 @@ function stubMemoryProvider(overrides = {}) {
         runState: "OPEN",
         sessionId: "33333333-3333-4333-8333-333333333333",
         sessionState: "OPEN",
+        sessionCreatedAt: "2026-08-14T12:00:00.000Z",
       };
     },
     async closeSessionAndBuildProjection(request) {
@@ -75,6 +76,11 @@ function stubMemoryProvider(overrides = {}) {
         receiptId: RECEIPT_ID,
         projectionGenerationId: PROJECTION_ID,
         storedSummaryCount: request.corpusEntries.length,
+        sessionId: "33333333-3333-4333-8333-333333333333",
+        sessionState: "CLOSED",
+        sessionCreatedAt: "2026-08-14T12:00:00.000Z",
+        sessionClosedAt: "2026-08-14T12:01:00.000Z",
+        canonicalMemoryIds: request.corpusEntries.map((entry) => entry.fixtureId),
       };
     },
     async recall(request) {
@@ -82,6 +88,9 @@ function stubMemoryProvider(overrides = {}) {
       return {
         replayed: false,
         receiptId: RECEIPT_ID,
+        sessionId: "44444444-4444-4444-8444-444444444444",
+        sessionState: "OPEN",
+        sessionCreatedAt: "2026-08-14T12:02:00.000Z",
         matches: [
           {
             memorySummaryId: "77777777-7777-4777-8777-777777777777",
@@ -279,8 +288,13 @@ test("checkpoint two stores the whole public-safe corpus with vectors", async ()
       }),
     );
     assert.equal(response.statusCode, 200);
-    assert.equal(response.body.projectionGenerationId, PROJECTION_ID);
-    assert.equal(response.body.embeddingModel.evidence, "MOCK");
+    assert.equal(response.body.receiptId, RECEIPT_ID);
+    assert.equal(response.body.session.state, "CLOSED");
+    assert.ok(
+      Array.isArray(response.body.canonicalMemoryIds) &&
+        response.body.canonicalMemoryIds.length >= 32,
+      `expected at least 32 canonical memory IDs, got ${response.body.canonicalMemoryIds?.length}`,
+    );
 
     const [, request] = provider.calls.find(([name]) => name === "closeSession");
     // The corpus must be large enough for vector indexing to be meaningful.

@@ -297,6 +297,7 @@ export function createVectorMemoryProvider(options) {
             runState: String(priorRun.rows[0].run_state),
             sessionId: sessionA.rows?.[0]?.session_id ?? null,
             sessionState: sessionA.rows?.[0]?.session_state ?? null,
+            sessionCreatedAt: sessionA.rows?.[0]?.started_at ?? null,
           });
         }
 
@@ -332,6 +333,7 @@ export function createVectorMemoryProvider(options) {
           runState: String(inserted.rows[0].run_state),
           sessionId: session.rows[0].session_id,
           sessionState: String(session.rows[0].session_state),
+          sessionCreatedAt: session.rows[0].started_at,
         });
       });
     },
@@ -373,12 +375,19 @@ export function createVectorMemoryProvider(options) {
         );
         if (replay) {
           const activeProjection = await run(client, "selectRunActiveProjection", [runId]);
+          const replaySession = await run(client, "selectSessionByOrdinal", [runId, "A"]);
+          const replaySessionRow = replaySession.rows?.[0];
           return Object.freeze({
             replayed: true,
             receiptId: replay.action_receipt_id,
             projectionGenerationId:
               activeProjection.rows?.[0]?.projection_generation_id ?? null,
             storedSummaryCount: corpusEntries.length,
+            sessionId: replaySessionRow?.session_id ?? null,
+            sessionState: replaySessionRow?.session_state ?? "CLOSED",
+            sessionCreatedAt: replaySessionRow?.started_at ?? null,
+            sessionClosedAt: replaySessionRow?.closed_at ?? null,
+            canonicalMemoryIds: corpusEntries.map((entry) => entry.fixtureId),
           });
         }
 
@@ -463,7 +472,7 @@ export function createVectorMemoryProvider(options) {
           caseNamespaceId,
           projectionGenerationId,
         ]);
-        await run(client, "updateSessionClosed", [caseNamespaceId, runId, sessionId]);
+        const closedSession = await run(client, "updateSessionClosed", [caseNamespaceId, runId, sessionId]);
 
         await run(client, "updateActionReceiptSettled", [
           receiptId,
@@ -472,11 +481,17 @@ export function createVectorMemoryProvider(options) {
           commitToCanonicalObject({ projectionGenerationId, stored: eventSequence }),
         ]);
 
+        const closedRow = closedSession.rows?.[0];
         return Object.freeze({
           replayed: false,
           receiptId,
           projectionGenerationId,
           storedSummaryCount: eventSequence,
+          sessionId,
+          sessionState: String(closedRow?.session_state ?? "CLOSED"),
+          sessionCreatedAt: closedRow?.started_at ?? null,
+          sessionClosedAt: closedRow?.closed_at ?? null,
+          canonicalMemoryIds: corpusEntries.map((entry) => entry.fixtureId),
         });
       });
     },
@@ -509,9 +524,14 @@ export function createVectorMemoryProvider(options) {
           const storedItems = await run(client, "selectRecallItemsByReceipt", [
             replay.action_receipt_id,
           ]);
+          const replaySessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
+          const replaySessionBRow = replaySessionB.rows?.[0];
           return Object.freeze({
             replayed: true,
             receiptId: replay.action_receipt_id,
+            sessionId: replaySessionBRow?.session_id ?? null,
+            sessionState: replaySessionBRow?.session_state ?? "OPEN",
+            sessionCreatedAt: replaySessionBRow?.started_at ?? null,
             matches: storedItems.rows.map(toPublicMatch),
           });
         }
@@ -528,18 +548,23 @@ export function createVectorMemoryProvider(options) {
 
         // Session B: reuse it if the fresh session already exists.
         const existingSessionB = await run(client, "selectSessionByOrdinal", [runId, "B"]);
-        const sessionBId =
-          existingSessionB.rows?.[0]?.session_id ??
-          (
-            await run(client, "insertSession", [
-              caseNamespaceId,
-              runId,
-              "B",
-              options.agentIdentifier,
-              options.resourceIdentifier,
-              options.authorityGrantIdentifier,
-            ])
-          ).rows[0].session_id;
+        let sessionBId;
+        let sessionBCreatedAt;
+        if (existingSessionB.rows?.[0]) {
+          sessionBId = existingSessionB.rows[0].session_id;
+          sessionBCreatedAt = existingSessionB.rows[0].started_at;
+        } else {
+          const insertedSessionB = await run(client, "insertSession", [
+            caseNamespaceId,
+            runId,
+            "B",
+            options.agentIdentifier,
+            options.resourceIdentifier,
+            options.authorityGrantIdentifier,
+          ]);
+          sessionBId = insertedSessionB.rows[0].session_id;
+          sessionBCreatedAt = insertedSessionB.rows[0].started_at;
+        }
 
         const receipt = await run(client, "insertActionReceiptReserved", [
           caseNamespaceId,
@@ -596,6 +621,8 @@ export function createVectorMemoryProvider(options) {
           replayed: false,
           receiptId,
           sessionId: sessionBId,
+          sessionState: "OPEN",
+          sessionCreatedAt: sessionBCreatedAt,
           projectionGenerationId,
           matches: found.rows.map(toPublicMatch),
         });

@@ -744,6 +744,9 @@ async function executeMemoryRoute({
   vectorMemoryProvider,
 }) {
   const idempotencyKey = getIdempotencyKey(event);
+  // Mutation responses carry only the fields the browser validator allows.
+  // providers is deliberately absent: it is a health/status concern, not a
+  // per-mutation field, and the validator's exact-key check would reject it.
   const basePayload = {
     ...buildBasePayload(true, requestId),
     buildStage: configuration.buildStage,
@@ -755,7 +758,6 @@ async function executeMemoryRoute({
     // keep the honest global view.
     deploymentEvidence: "LIVE_TESTWIRED",
     releaseCommit: configuration.releaseCommit,
-    providers: providerStates,
     protectedFieldsReturned: 0,
   };
 
@@ -771,9 +773,13 @@ async function executeMemoryRoute({
         payload: {
           ...basePayload,
           runId: created.runId,
-          runState: created.runState,
-          replayed: created.replayed,
-          session: { sessionId: created.sessionId, ordinal: "A", state: created.sessionState },
+          scenarioId: CANONICAL_SCENARIO.scenarioId,
+          session: {
+            sessionId: created.sessionId,
+            ordinal: "A",
+            state: created.sessionState,
+            createdAt: created.sessionCreatedAt,
+          },
         },
       };
     }
@@ -790,11 +796,15 @@ async function executeMemoryRoute({
         payload: {
           ...basePayload,
           runId: resolvedRoute.parameters.runId,
-          replayed: closed.replayed,
+          session: {
+            sessionId: closed.sessionId,
+            ordinal: "A",
+            state: closed.sessionState,
+            createdAt: closed.sessionCreatedAt,
+            closedAt: closed.sessionClosedAt,
+          },
+          canonicalMemoryIds: closed.canonicalMemoryIds,
           receiptId: closed.receiptId,
-          projectionGenerationId: closed.projectionGenerationId,
-          storedSummaryCount: closed.storedSummaryCount,
-          embeddingModel: { id: SYNTHETIC_EMBEDDING_MODEL_ID, evidence: "MOCK" },
         },
       };
     }
@@ -813,11 +823,15 @@ async function executeMemoryRoute({
         payload: {
           ...basePayload,
           runId: resolvedRoute.parameters.runId,
-          replayed: recalled.replayed,
-          receiptId: recalled.receiptId,
+          session: {
+            sessionId: recalled.sessionId,
+            ordinal: "B",
+            state: recalled.sessionState,
+            createdAt: recalled.sessionCreatedAt,
+          },
           query: queryEmbedding.canonicalInput,
           matches: recalled.matches,
-          embeddingModel: { id: SYNTHETIC_EMBEDDING_MODEL_ID, evidence: "MOCK" },
+          receiptId: recalled.receiptId,
         },
       };
     }
@@ -842,7 +856,6 @@ async function executeMemoryRoute({
           ...basePayload,
           runId: resolvedRoute.parameters.runId,
           action: "attempt_protected_disclosure",
-          replayed: denial.replayed,
           receiptId: denial.receiptId,
           result: {
             kind: "DISCLOSURE_DENIED",
