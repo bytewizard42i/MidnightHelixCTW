@@ -930,6 +930,8 @@ async function executeMemoryRoute({
     if (error instanceof PublicApiError) {
       throw error;
     }
+    // Temporary diagnostic: log the real error before mapping it
+    console.error("[DIAG] verify/rebuild error:", error?.code, error?.message, error?.stack?.split("\n").slice(0,3).join(" | "));
     throw memoryErrorToPublicError(error);
   }
 
