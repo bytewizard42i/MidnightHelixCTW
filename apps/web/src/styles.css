@@ -498,7 +498,7 @@ main,
 
 .flow-shell,
 .provider-panel {
-  padding-block: 3rem 6rem;
+  padding-block: 0.6rem 6rem;
 }
 
 .flow-intro {
