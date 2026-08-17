@@ -538,7 +538,6 @@ main,
 }
 
 .flow-intro {
-  max-width: 760px;
   margin-bottom: 2.5rem;
 }
 
@@ -559,6 +558,7 @@ main,
 
 .flow-intro > p:last-child,
 .section-note {
+  max-width: 760px;
   color: var(--muted);
   line-height: 1.65;
 }
