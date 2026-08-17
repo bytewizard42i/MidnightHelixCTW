@@ -393,6 +393,7 @@ export function createLazyVectorMemoryProvider(options = {}) {
       agentIdentifier: scenario.agentDidz,
       resourceIdentifier: scenario.resourceId,
       authorityGrantIdentifier: scenario.grantId,
+      permittedPredicate: scenario.predicate,
     });
   }
 

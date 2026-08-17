@@ -192,6 +192,8 @@ RETURNING session_id, session_state, started_at, closed_at
  */
 const RECALL_TOP_TWO_BY_COSINE_DISTANCE = `
 SELECT embeddings.memory_summary_id,
+       embeddings.session_id,
+       embeddings.projection_generation_id,
        summaries.public_safe_summary,
        embeddings.embedding <=> $3::VECTOR AS cosine_distance
   FROM mhelix_testwired.mhelix_memory_summary_embeddings AS embeddings
@@ -274,10 +276,15 @@ SELECT receipts.action_receipt_id, receipts.run_id, receipts.operation,
 
 const SELECT_RECALL_ITEMS_BY_RECEIPT = `
 SELECT items.memory_summary_id, items.result_rank, items.cosine_distance,
-       summaries.public_safe_summary
+       items.projection_generation_id, summaries.public_safe_summary,
+       embeddings.session_id
   FROM mhelix_testwired.mhelix_recall_result_items AS items
   JOIN mhelix_testwired.mhelix_memory_summaries AS summaries
     ON summaries.memory_summary_id = items.memory_summary_id
+  JOIN mhelix_testwired.mhelix_memory_summary_embeddings AS embeddings
+    ON embeddings.memory_summary_id = items.memory_summary_id
+   AND embeddings.run_id = items.run_id
+   AND embeddings.projection_generation_id = items.projection_generation_id
  WHERE items.action_receipt_id = $1
  ORDER BY items.result_rank
 `;

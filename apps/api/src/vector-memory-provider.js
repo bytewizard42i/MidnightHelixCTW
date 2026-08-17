@@ -500,7 +500,7 @@ export function createVectorMemoryProvider(options) {
      * Checkpoint three: from a fresh session, recall the two best matching
      * public-safe memories through CockroachDB vector search.
      */
-    async recall({ runId, idempotencyKey, transportRequestId, queryVectorLiteral, queryText }) {
+    async recall({ runId, idempotencyKey, transportRequestId, queryVectorLiteral, queryText, corpusEntries }) {
       requireUuid(runId, "runId");
       const keyHash = hashIdempotencyKey(idempotencyKey);
       const requestCommitment = commitToCanonicalObject({
@@ -508,6 +508,17 @@ export function createVectorMemoryProvider(options) {
         runId,
         queryText,
       });
+
+      // Build a lookup from public-safe summary text to fixture ID, so the
+      // recall matches can carry the canonical memory identifier the browser
+      // validator expects (the fixture ID from close-session), not the
+      // database-generated summary UUID.
+      const corpusBySummary = new Map();
+      if (Array.isArray(corpusEntries)) {
+        for (const entry of corpusEntries) {
+          corpusBySummary.set(entry.publicSafeSummary, entry.fixtureId);
+        }
+      }
 
       return withTransaction(async (client) => {
         await readCapability(client);
@@ -532,7 +543,9 @@ export function createVectorMemoryProvider(options) {
             sessionId: replaySessionBRow?.session_id ?? null,
             sessionState: replaySessionBRow?.session_state ?? "OPEN",
             sessionCreatedAt: replaySessionBRow?.started_at ?? null,
-            matches: storedItems.rows.map(toPublicMatch),
+            matches: storedItems.rows.map((row) =>
+              toPublicMatch(row, corpusBySummary, options.resourceIdentifier, options.permittedPredicate),
+            ),
           });
         }
 
@@ -624,7 +637,9 @@ export function createVectorMemoryProvider(options) {
           sessionState: "OPEN",
           sessionCreatedAt: sessionBCreatedAt,
           projectionGenerationId,
-          matches: found.rows.map(toPublicMatch),
+          matches: found.rows.map((row) =>
+            toPublicMatch(row, corpusBySummary, options.resourceIdentifier, options.permittedPredicate),
+          ),
         });
       });
     },
@@ -736,6 +751,10 @@ export function createVectorMemoryProvider(options) {
           fail("RECEIPT_NOT_FOUND", "No receipt exists for that identifier.");
         }
         const items = await run(client, "selectRecallItemsByReceipt", [receiptId]);
+        // The receipt fetch has no corpus context, so build an empty lookup.
+        // The matches will fall back to the database summary UUID, which is
+        // still a valid bounded identifier for receipt inspection.
+        const emptyCorpus = new Map();
         return Object.freeze({
           receiptId: row.action_receipt_id,
           runId: row.run_id,
@@ -745,7 +764,9 @@ export function createVectorMemoryProvider(options) {
           transportRequestId: row.transport_request_id ?? null,
           createdAt: row.created_at,
           completedAt: row.completed_at ?? null,
-          matches: items.rows.map(toPublicMatch),
+          matches: items.rows.map((itemRow) =>
+            toPublicMatch(itemRow, emptyCorpus, options.resourceIdentifier, options.permittedPredicate),
+          ),
         });
       } finally {
         client.release();
@@ -755,14 +776,23 @@ export function createVectorMemoryProvider(options) {
 }
 
 /**
- * Map one stored row to the exact public shape. Building the object explicitly,
- * rather than spreading the row, is what stops a future column from leaking.
+ * Map one stored row to the exact public shape the browser validator expects.
+ * Building the object explicitly, rather than spreading the row, is what stops
+ * a future column from leaking.
+ *
+ * The corpus is needed to resolve the canonical fixture identifier from the
+ * stored public-safe summary, because the database stores a generated UUID as
+ * the primary key, not the fixture identifier. The summary text is unique per
+ * fixture, so the match is unambiguous.
  */
-function toPublicMatch(row) {
+function toPublicMatch(row, corpusBySummary, canonicalObjectId, canonicalPredicate) {
+  const fixtureId = corpusBySummary.get(row.public_safe_summary);
   return Object.freeze({
-    memorySummaryId: row.memory_summary_id,
-    publicSafeSummary: row.public_safe_summary,
-    cosineDistance: Number(row.cosine_distance),
-    rank: row.result_rank === undefined ? undefined : Number(row.result_rank),
+    memoryId: fixtureId ?? row.memory_summary_id,
+    sourceSessionId: row.session_id,
+    objectId: canonicalObjectId,
+    permittedPredicate: canonicalPredicate,
+    projectionGenerationId: row.projection_generation_id,
+    semanticDistance: Number(row.cosine_distance),
   });
 }

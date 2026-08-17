@@ -93,9 +93,12 @@ function stubMemoryProvider(overrides = {}) {
         sessionCreatedAt: "2026-08-14T12:02:00.000Z",
         matches: [
           {
-            memorySummaryId: "77777777-7777-4777-8777-777777777777",
-            publicSafeSummary: "Edgar Morrow is a TestTown citizen.",
-            cosineDistance: 0.0125,
+            memoryId: "testtown-citizens-edgar-morrow",
+            sourceSessionId: "33333333-3333-4333-8333-333333333333",
+            objectId: "rwaz:testtown:property:morrow-family-farmhouse",
+            permittedPredicate: "property.is_unencumbered",
+            projectionGenerationId: PROJECTION_ID,
+            semanticDistance: 0.0125,
           },
         ],
       };
@@ -329,8 +332,16 @@ test("checkpoint three recalls through vector search from a fresh session", asyn
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.matches.length, 1);
     assert.equal(
-      response.body.matches[0].publicSafeSummary,
-      "Edgar Morrow is a TestTown citizen.",
+      response.body.matches[0].memoryId,
+      "testtown-citizens-edgar-morrow",
+    );
+    assert.equal(
+      response.body.matches[0].objectId,
+      "rwaz:testtown:property:morrow-family-farmhouse",
+    );
+    assert.equal(
+      response.body.matches[0].permittedPredicate,
+      "property.is_unencumbered",
     );
     assert.equal(response.body.protectedFieldsReturned, 0);
 

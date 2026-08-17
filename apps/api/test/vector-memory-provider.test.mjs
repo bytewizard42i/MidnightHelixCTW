@@ -87,8 +87,8 @@ function defaultResponder(overrides = {}) {
     }
     if (text.includes("FROM mhelix_testwired.mhelix_memory_sessions")) {
       const ordinal = values[1];
-      if (ordinal === "A") return state.sessionA ?? [{ session_id: SESSION_A_ID, session_state: "OPEN" }];
-      return state.sessionB ?? [];
+      if (ordinal === "A") return state.sessionA ?? [{ session_id: SESSION_A_ID, session_state: "OPEN", started_at: "t" }];
+      return state.sessionB ?? [{ session_id: SESSION_B_ID, session_state: "OPEN", started_at: "t" }];
     }
     if (text.startsWith("INSERT INTO mhelix_testwired.mhelix_memory_sessions")) {
       return [{ session_id: values[2] === "A" ? SESSION_A_ID : SESSION_B_ID, session_state: "OPEN", started_at: "t" }];
@@ -113,7 +113,7 @@ function defaultResponder(overrides = {}) {
     }
     if (text.includes("<=>")) {
       return state.recallRows ?? [
-        { memory_summary_id: SUMMARY_ID, public_safe_summary: "Edgar Morrow is a TestTown citizen.", cosine_distance: 0.0125 },
+        { memory_summary_id: SUMMARY_ID, session_id: SESSION_A_ID, projection_generation_id: PROJECTION_ID, public_safe_summary: "Edgar Morrow is a TestTown citizen.", cosine_distance: 0.0125 },
       ];
     }
     if (text.includes("FROM mhelix_testwired.mhelix_recall_result_items")) {
@@ -132,6 +132,7 @@ function buildProvider(responder, extra = {}) {
     agentIdentifier: "didz:testtown:agent:morrow-property-assistant",
     resourceIdentifier: "rwaz:testtown:property:morrow-family-farmhouse",
     authorityGrantIdentifier: "grant:testtown:morrow-property-unencumbered:v1",
+    permittedPredicate: "property.is_unencumbered",
     ...extra,
   });
   return { pool, provider };
@@ -366,7 +367,8 @@ test("recall constrains both index prefixes and resolves the projection from the
   assert.equal(vectorQuery.values[0], RUN_ID);
   assert.equal(vectorQuery.values[1], PROJECTION_ID, "projection must come from the run");
   assert.equal(result.matches.length, 1);
-  assert.equal(result.matches[0].publicSafeSummary, "Edgar Morrow is a TestTown citizen.");
+  assert.equal(result.matches[0].objectId, "rwaz:testtown:property:morrow-family-farmhouse");
+  assert.equal(result.matches[0].permittedPredicate, "property.is_unencumbered");
 });
 
 test("recall fails closed when the run has no active projection", async () => {
@@ -452,7 +454,9 @@ test("a receipt fetch returns only allowlisted public fields", async () => {
           memory_summary_id: SUMMARY_ID,
           result_rank: 1,
           cosine_distance: 0.02,
+          projection_generation_id: PROJECTION_ID,
           public_safe_summary: "Edgar Morrow is a TestTown citizen.",
+          session_id: "33333333-3333-4333-8333-333333333333",
         },
       ];
     }
@@ -472,7 +476,8 @@ test("a receipt fetch returns only allowlisted public fields", async () => {
   ]);
   assert.equal("idempotency_key_hash" in receipt, false);
   assert.equal(receipt.protectedFieldsReturned, 0);
-  assert.equal(receipt.matches[0].rank, 1);
+  assert.equal(receipt.matches[0].objectId, "rwaz:testtown:property:morrow-family-farmhouse");
+  assert.equal(receipt.matches[0].permittedPredicate, "property.is_unencumbered");
 });
 
 test("a malformed identifier is rejected before any query", async () => {

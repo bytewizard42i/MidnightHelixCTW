@@ -817,6 +817,7 @@ async function executeMemoryRoute({
         transportRequestId: requestId,
         queryVectorLiteral: toVectorLiteral(queryEmbedding.embedding),
         queryText: queryEmbedding.canonicalInput,
+        corpusEntries: loadMemoryCorpusEntries(),
       });
       return {
         statusCode: 200,
