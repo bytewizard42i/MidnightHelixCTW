@@ -152,6 +152,37 @@ SELECT projection_generation_id
 `;
 
 /**
+ * Select all summary embedding metadata for a run under a specific projection
+ * generation, so a rebuild can count the canonical sources and re-link them.
+ */
+const SELECT_EMBEDDINGS_FOR_PROJECTION = `
+SELECT embeddings.memory_summary_id, embeddings.session_id,
+       embeddings.embedding_model_id, embeddings.embedding_dimensions
+  FROM mhelix_testwired.mhelix_memory_summary_embeddings AS embeddings
+ WHERE embeddings.run_id = $1
+   AND embeddings.projection_generation_id = $2
+ ORDER BY embeddings.memory_summary_id
+`;
+
+/**
+ * Copy all embeddings from one projection generation to a new one, entirely
+ * inside the database. The stored vector and its commitment never leave the
+ * database — they are read and written in the same INSERT ... SELECT, so the
+ * application never sees them. This is the rebuild operation.
+ */
+const COPY_EMBEDDINGS_TO_NEW_PROJECTION = `
+INSERT INTO mhelix_testwired.mhelix_memory_summary_embeddings
+  (case_namespace_id, run_id, session_id, projection_generation_id,
+   memory_summary_id, embedding_model_id, embedding_dimensions,
+   embedding, embedding_commitment)
+SELECT $3, $1, session_id, $4, memory_summary_id,
+       embedding_model_id, embedding_dimensions, embedding, embedding_commitment
+  FROM mhelix_testwired.mhelix_memory_summary_embeddings
+ WHERE run_id = $1
+   AND projection_generation_id = $2
+`;
+
+/**
  * Store one public-safe summary embedding.
  *
  * The vector arrives as a bound parameter cast to `VECTOR`, never as
@@ -328,6 +359,8 @@ export const VECTOR_MEMORY_STATEMENTS = Object.freeze({
   updateProjectionVerified: UPDATE_PROJECTION_VERIFIED,
   insertRunActiveProjection: INSERT_RUN_ACTIVE_PROJECTION,
   selectRunActiveProjection: SELECT_RUN_ACTIVE_PROJECTION,
+  selectEmbeddingsForProjection: SELECT_EMBEDDINGS_FOR_PROJECTION,
+  copyEmbeddingsToNewProjection: COPY_EMBEDDINGS_TO_NEW_PROJECTION,
   insertSummaryEmbedding: INSERT_SUMMARY_EMBEDDING,
   updateSessionClosed: UPDATE_SESSION_CLOSED,
   recallTopTwoByCosineDistance: RECALL_TOP_TWO_BY_COSINE_DISTANCE,
@@ -351,6 +384,7 @@ export const MUTATING_STATEMENT_NAMES = Object.freeze([
   "updateProjectionVerified",
   "insertRunActiveProjection",
   "insertSummaryEmbedding",
+  "copyEmbeddingsToNewProjection",
   "updateSessionClosed",
   "insertActionReceiptReserved",
   "updateActionReceiptSettled",

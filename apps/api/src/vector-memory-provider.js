@@ -923,12 +923,13 @@ export function createVectorMemoryProvider(options) {
           // rebuild. We cannot re-derive it from the current active projection
           // because a later continuity check may have advanced past it, so we
           // return the previousGenerationId as both previous and active.
+          const existingEmbeddings = await run(client, "selectEmbeddingsForProjection", [runId, previousGenerationId]);
           return Object.freeze({
             replayed: true,
             receiptId: replay.action_receipt_id,
             previousGenerationId,
             activeGenerationId: previousGenerationId,
-            canonicalSourceCount: corpusEntries.length,
+            canonicalSourceCount: existingEmbeddings.rows.length,
             commitmentVerified: true,
             evidenceCommitment: deriveEvidenceCommitment(
               null,
@@ -937,37 +938,41 @@ export function createVectorMemoryProvider(options) {
           });
         }
 
-        // Build a new projection generation from the same corpus.
+        // Read the existing embeddings metadata from the current projection
+        // to count the canonical sources. The stored vectors never leave the
+        // database — they are copied inside the transaction by the next step.
+        const existingEmbeddings = await run(client, "selectEmbeddingsForProjection", [
+          runId,
+          previousGenerationId,
+        ]);
+        const sourceCount = existingEmbeddings.rows.length;
+        if (sourceCount === 0) {
+          fail("INVALID_INPUT", "No embeddings exist for the current projection.");
+        }
+
+        // Build a new projection generation from the same canonical source count.
         const newProjection = await run(client, "insertProjectionGeneration", [
           caseNamespaceId,
-          corpusEntries.length,
+          sourceCount,
           commitToCanonicalObject({
             runId,
-            entries: corpusEntries.map((entry) => entry.embeddingCommitmentHex),
+            sourceCount,
             rebuild: true,
+            previousGenerationId,
           }),
         ]);
         const activeGenerationId = newProjection.rows[0].projection_generation_id;
 
-        // Re-insert the same embeddings under the new generation.
-        const sessionA = await run(client, "selectSessionByOrdinal", [runId, "A"]);
-        const sessionAId = sessionA.rows?.[0]?.session_id;
-
-        let eventSequence = 0;
-        for (const entry of corpusEntries) {
-          eventSequence += 1;
-          await run(client, "insertSummaryEmbedding", [
-            caseNamespaceId,
-            runId,
-            sessionAId,
-            activeGenerationId,
-            entry.memorySummaryId ?? null,
-            entry.embeddingModelId,
-            entry.embeddingDimensions,
-            entry.vectorLiteral,
-            Buffer.from(entry.embeddingCommitmentHex, "hex"),
-          ]);
-        }
+        // Copy all embeddings from the old projection to the new one, entirely
+        // inside the database. The stored vectors and commitments never leave
+        // CockroachDB — this is an INSERT ... SELECT, not an application-level
+        // round-trip.
+        await run(client, "copyEmbeddingsToNewProjection", [
+          runId,
+          previousGenerationId,
+          caseNamespaceId,
+          activeGenerationId,
+        ]);
 
         await run(client, "updateProjectionVerified", [
           caseNamespaceId,
@@ -998,7 +1003,7 @@ export function createVectorMemoryProvider(options) {
             sessionBId,
             3,
             "PROJECTION_REBUILT",
-            `Rebuilt recall projection with ${eventSequence} canonical sources.`,
+            `Rebuilt recall projection with ${sourceCount} canonical sources.`,
             commitToCanonicalObject({ receiptId, activeGenerationId }),
             commitToCanonicalObject({ rebuilt: true }),
             new Date().toISOString(),
@@ -1012,7 +1017,7 @@ export function createVectorMemoryProvider(options) {
           commitToCanonicalObject({
             previousGenerationId,
             activeGenerationId,
-            canonicalSourceCount: eventSequence,
+            canonicalSourceCount: sourceCount,
           }),
         ]);
 
@@ -1021,7 +1026,7 @@ export function createVectorMemoryProvider(options) {
           receiptId,
           previousGenerationId,
           activeGenerationId,
-          canonicalSourceCount: eventSequence,
+          canonicalSourceCount: sourceCount,
           commitmentVerified: true,
           evidenceCommitment: deriveEvidenceCommitment(null, activeGenerationId),
         });
