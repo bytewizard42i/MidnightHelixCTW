@@ -556,6 +556,16 @@ main,
   width: 100%;
 }
 
+.flow-subtitle {
+  margin: 0.5rem 0 0;
+  max-width: 760px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 2vw, 1.8rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
 .flow-intro > p:last-child,
 .section-note {
   max-width: 760px;

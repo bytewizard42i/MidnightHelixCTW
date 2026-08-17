@@ -835,8 +835,9 @@ export default function App() {
           >
             <p className="eyebrow">One proof, eight checkpoints</p>
             <h2 id="flow-title" className="flow-title--full">RWAz (Privacy-Preserving Real World Asset Tokenized Registries)</h2>
+            <h3 className="flow-subtitle">Welcome to the Morrow Family Farmhouse example.</h3>
             <p>
-              Welcome to the Morrow Family Farmhouse example. We have some example RWAz data for the Morrow Family Farmhouse, and we will go through a guided tour asking some questions that we have limited authority to ask as we explore possibly buying the property.
+              We have some example RWAz data for the Morrow Family Farmhouse, and we will go through a guided tour asking some questions that we have limited authority to ask as we explore possibly buying the property.
             </p>
           </div>
 
