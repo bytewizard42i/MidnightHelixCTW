@@ -45,10 +45,16 @@ all 6 comparisons true.
 The deployment-only bootstrap is now deployed: release
 `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` runs `src/lambda.handler`, and the
 public `/api/v1/status` route reads the bounded read-only environment-marker
-probe back as `REALDEAL_TEST` and `CONNECTED`. That evidence covers the
-connection, runtime identity, and reviewed TestWired marker only. Persistent
-memory, vector retrieval, and mutations remain unavailable, and the overall
-application remains `NOT_CONNECTED` with `readyForMutations` false.
+probe back as `REALDEAL_TEST` and `CONNECTED`.
+
+As of 2026-08-17 the vector-memory slice is also live. `src/lambda.js`
+constructs a lazy vector-memory provider whose writes are gated on a capability
+row bound to the exact deployed release, and the five judge routes persist and
+recall real memory in CockroachDB. The overall application still reports
+`NOT_CONNECTED` with `readyForMutations` false, because that global flag covers
+every deferred provider; the narrow slice reports itself separately through
+`memorySlice.available` on the status route. See
+[the live memory proof](../../docs/archive/cockroachdb/2026-08-17-live-memory-proof.md).
 
 `createHandler({ cockroachProvider })` accepts an injected, read-only provider
 for the health, status, and scenario routes. `src/lambda.js` supplies that

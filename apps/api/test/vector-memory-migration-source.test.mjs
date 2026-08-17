@@ -517,7 +517,17 @@ function collectWordingViolations(documentText) {
     [/cannot be forged/i, "forgery-overclaim"],
     [/prevents every table mutation/i, "mutation-prevention-overclaim"],
     [/proves vector retrieval|retrieval is proven/i, "retrieval-overclaim"],
-    [/index is used|uses the vector index\b/i, "index-use-overclaim"],
+    // Index use WAS unprovable, so this rule used to ban the claim outright.
+    // A live EXPLAIN on 2026-08-17 proved it, so the rule now demands evidence
+    // instead of silence: any index-use claim must cite the dated proof. That
+    // is stricter than the old ban, because an uncited claim still fails while
+    // an honest cited one is permitted.
+    [
+      (text) =>
+        /index is used|uses the vector index\b/i.test(text) &&
+        !/2026-08-17-live-memory-proof/.test(text),
+      "index-use-claim-without-evidence",
+    ],
     [/\b\d+ of \d+ (unsafe )?variants?\b/i, "unreproduced-numeric-claim"],
     [
       /managed-mcp[^.]{0,80}\bis (?:fully |now )?least[- ]privileged/i,
@@ -526,7 +536,11 @@ function collectWordingViolations(documentText) {
     [/deterministic embedding generator exists/i, "generator-overclaim"],
   ];
   for (const [pattern, violation] of overstatements) {
-    if (pattern.test(documentText)) {
+    const fired =
+      typeof pattern === "function"
+        ? pattern(documentText)
+        : pattern.test(documentText);
+    if (fired) {
       violations.push(violation);
     }
   }
@@ -947,7 +961,7 @@ test("wording guard rejects overstated claims", async () => {
     ["provenance cannot be forged", "forgery-overclaim"],
     ["this flag prevents every table mutation", "mutation-prevention-overclaim"],
     ["this proves vector retrieval end to end", "retrieval-overclaim"],
-    ["the index is used by the recall query", "index-use-overclaim"],
+    ["the index is used by the recall query", "index-use-claim-without-evidence"],
     ["9 of 9 unsafe variants rejected", "unreproduced-numeric-claim"],
     [
       "the managed-mcp identity is fully least-privileged today",

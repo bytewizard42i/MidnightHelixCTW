@@ -176,14 +176,23 @@ sanitized transcript are the activation evidence.
 
 ## Migration 002: vector-memory recall slice (`SOURCE_ONLY`)
 
-`002_testwired_vector_memory.sql` is committed reviewed source. **It has not
-been applied.** No vector row exists, no grant has been executed, no capability
-row has been inserted, and no vector query or query plan has been observed.
-Committing it proves nothing about the live database.
+`002_testwired_vector_memory.sql` was **applied to the live cluster on
+2026-08-17**, together with its ledger row, grant packet, and release-bound
+capability row. Every verifier boolean reads true against the live database,
+the public journey stored 63 summaries and vectors, and a read-only `EXPLAIN`
+shows the cosine vector index in use. See
+[the live memory proof](../../docs/archive/cockroachdb/2026-08-17-live-memory-proof.md).
 
-Unverified and explicitly not claimed by this slice: vector retrieval,
-vector-index use, capability activation, Managed MCP (Model Context Protocol)
-access, and hosted execution of any of it.
+Two activation constraints found live: the Cloud SQL Shell rejects `SET ROLE`
+and wraps submissions in an explicit transaction, so it cannot toggle
+`schema_locked` and cannot perform this activation; use `psql` with
+`sslmode=verify-full`. Populated tables are schema-locked by default, so the
+two additive indexes on migration-001 tables need
+`SET (schema_locked = false)` first, each as its own statement, and re-locking
+afterwards.
+
+Still not claimed: a semantic embedding model, and a least-privileged Managed
+MCP (Model Context Protocol) identity.
 
 ### What it adds
 

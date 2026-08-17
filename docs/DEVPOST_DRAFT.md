@@ -1,11 +1,16 @@
 # Devpost draft
 
-> **DO NOT PUBLISH IN THIS CURRENT FORM.** The sections below describe the
-> target submission flow. Replace every provider claim from current release
-> evidence before publication. As of 2026-08-14, the judge UI and AWS
-> infrastructure exist as source, no public endpoint is verified, and cloud,
-> database, proof, reconstruction, and Managed MCP capabilities remain
-> `SOURCE_ONLY`, `PLANNED`, or `NOT_CONNECTED`.
+> **Status as of 2026-08-17.** The public judge journey is live at release
+> `c573c98a357e15c71bcc863eb4934db9f76bbccd`: CockroachDB persistent memory,
+> distributed vector indexing proven by a live `EXPLAIN`, a protected-disclosure
+> denial returning zero fields, and an immutable receipt. Managed MCP was used
+> as an independent read-only audit. Evidence:
+> [the live memory proof](archive/cockroachdb/2026-08-17-live-memory-proof.md).
+>
+> **Still verify before publishing:** embeddings are `MOCK`, not a semantic
+> model; Amazon Bedrock, Midnight routing, Filecoin, and projection rebuild
+> remain `PLANNED` or `NOT_CONNECTED`; and the Managed MCP identity inherits
+> `admin`, so it must never be described as least-privileged.
 
 ## Project title
 
@@ -103,14 +108,17 @@ and idempotent.
 
 Complete this section only from current evidence before submission:
 
-- [ ] public AWS URL;
-- [ ] new-session Cockroach recall;
-- [ ] live Titan vector query and query-plan evidence;
-- [ ] real Midnight test-network receipt;
-- [ ] unauthorized disclosure denial;
+- [x] public AWS URL: <https://testwired.helixctw.com>;
+- [x] new-session Cockroach recall, proven through the public API;
+- [x] live vector query with `EXPLAIN` showing `vector search` on the cosine
+      index with `prefix spans` — note the embedding model is `MOCK`, so a
+      **semantic** (Titan) vector query remains outstanding;
+- [ ] real Midnight test-network receipt — local proof only, `VERIFIED_LOCAL`;
+- [x] unauthorized disclosure denial with zero protected fields returned;
 - [ ] shadow projection rebuild;
-- [ ] read-only Managed MCP verification;
-- [ ] public repository and under-three-minute video.
+- [x] read-only Managed MCP verification — audit path only, identity inherits
+      `admin` and is not least-privileged;
+- [x] public repository; [ ] under-three-minute video.
 
 ## Prior-work disclosure
 

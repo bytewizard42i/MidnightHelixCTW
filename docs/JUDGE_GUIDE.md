@@ -52,9 +52,19 @@ Choose **Morrow Family Farmhouse**. The UI displays:
 
 ### 2. Create memory in Session A
 
-Steps 2 through 6 are the acceptance script for the connected target flow. In
-the current Phase 1 source, these operational controls remain locked and the API
-returns `503 LIVE_PROVIDERS_NOT_CONNECTED`.
+Steps 2 through 6 are live as of 2026-08-17. The five judge routes persist and
+recall real memory in CockroachDB, deny a protected disclosure with zero fields
+returned, and serve an immutable receipt. Evidence:
+[the live memory proof](archive/cockroachdb/2026-08-17-live-memory-proof.md).
+
+Two honest boundaries while you follow the script. The overall application
+still reports `NOT_CONNECTED` with `readyForMutations` false, because that
+global flag covers every deferred provider; the memory slice reports itself
+separately as `memorySlice.available` on the status route. And the embedding
+model is `MOCK`: a deterministic generator, not a semantic model, so recall
+returns deterministically ranked neighbours rather than semantically insightful
+ones. The storage, distance computation, index, retrieval, and receipts are all
+real CockroachDB behaviour.
 
 Use the suggested prompt:
 
@@ -131,11 +141,16 @@ versions, latency, and Managed MCP verification, remain `NOT AVAILABLE` until
 their own reviewed contracts supply them. The panel never discovers evidence by
 recursively searching arbitrary JSON.
 
-The current Phase 1 API source still returns
-`503 LIVE_PROVIDERS_NOT_CONNECTED` for receipt retrieval and does not invent these
-values. A future read-only, cluster-scoped CockroachDB Managed MCP operation must
-have a separate reviewed response contract before the panel can claim that
-independent verification.
+Receipt retrieval is live: `GET /api/v1/judge/receipts/{receiptId}` returns the
+immutable receipt with `protectedFieldsReturned: 0`. Fields the panel has no
+reviewed contract for still read `NOT AVAILABLE` rather than being invented.
+
+CockroachDB Managed MCP (Model Context Protocol) was used on 2026-08-17 as an
+independent read-only audit of that evidence, confirming 63 stored vectors, 2
+ranked recall rows, 1 `DENIED` receipt, and 0 protected fields ever returned.
+That identity inherits `admin` and is therefore **not** least-privileged, so it
+is documented as an audit path and a correction gate, not as a least-privileged
+integration, and it is deliberately not part of the public request path.
 
 ## What the completed TestWired evidence must prove
 
