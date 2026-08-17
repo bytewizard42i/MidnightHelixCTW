@@ -6,6 +6,7 @@ import {
   JudgeApiRequestError,
   normalizePublicApiBaseUrl,
 } from "./api/client";
+import { fireConfetti } from "./confetti";
 import type {
   ApiResponseEnvelope,
   EvidenceLabel,
@@ -527,6 +528,7 @@ export default function App() {
       });
       setCurrentStep((step) => step + 1);
       setDrawerOpen(true);
+      fireConfetti();
     } catch (error) {
       setOperationError(publicErrorMessage(error));
     } finally {
