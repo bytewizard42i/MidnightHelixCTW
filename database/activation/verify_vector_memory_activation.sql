@@ -187,6 +187,7 @@ SELECT (
           WHERE t.table_schema = 'mhelix_testwired'
             AND t.table_name = 'mhelix_recall_result_items'
             AND t.constraint_type = 'FOREIGN KEY'
+            AND t.constraint_name LIKE '%action\_receipt\_id\_operation\_fkey'
             AND (
               (k.ordinal_position = 1 AND k.column_name = 'run_id')
               OR (k.ordinal_position = 2 AND k.column_name = 'action_receipt_id')
@@ -202,6 +203,7 @@ SELECT (
           WHERE t.table_schema = 'mhelix_testwired'
             AND t.table_name = 'mhelix_recall_result_items'
             AND t.constraint_type = 'FOREIGN KEY'
+            AND t.constraint_name LIKE '%projection\_generation\_id\_memory\_summary\_id\_fkey'
             AND (
               (k.ordinal_position = 1 AND k.column_name = 'run_id')
               OR (k.ordinal_position = 2 AND k.column_name = 'projection_generation_id')
@@ -254,7 +256,7 @@ SELECT (
          SELECT count(*)
            FROM [SHOW CREATE TABLE
                  mhelix_testwired.mhelix_recall_result_items]
-          WHERE create_statement LIKE '%CHECK ((operation = ''recall''%'
+          WHERE create_statement LIKE '%CHECK (operation = ''recall'':::STRING)%'
        ) = 1 AS recall_operation_check_is_exact,
        (
          SELECT count(*)
@@ -266,7 +268,7 @@ SELECT (
          SELECT count(*)
            FROM [SHOW CREATE TABLE
                  mhelix_testwired.mhelix_runtime_capabilities]
-          WHERE create_statement LIKE '%CHECK ((NOT public_mutations_enabled)%'
+          WHERE create_statement LIKE '%CHECK (NOT public_mutations_enabled)%'
        ) = 1 AS mutation_claim_guard_definition_is_exact,
        (
          SELECT count(*)
@@ -391,7 +393,7 @@ SELECT (SELECT count(*) FROM actual_grant) = 24 AS runtime_grant_count_is_exact,
          ) AS extra_grant
        ) = 0 AS no_unexpected_grant_present,
        (
-         SELECT count(*) FROM actual_grant WHERE is_grantable
+         SELECT count(*) FROM actual_grant WHERE is_grantable = 'YES'
        ) = 0 AS no_grant_is_grantable,
        (
          SELECT count(*) FROM actual_grant
