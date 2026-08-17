@@ -925,6 +925,24 @@ export function createVectorMemoryProvider(options) {
           fail("PROJECTION_NOT_ACTIVE", "This run has no active recall projection.");
         }
 
+        // Query the recall items to recover the canonical memory ID that the
+        // initial predicate verified. The evidence commitment must be derived
+        // from the same canonical memory ID and the same ORIGINAL projection
+        // generation as the predicate, so the browser validator can confirm
+        // the canonical source set was preserved across the rebuild.
+        const corpusBySummary = new Map(
+          (corpusEntries ?? []).map((entry) => [
+            entry.publicSafeSummary,
+            entry.fixtureId,
+          ]),
+        );
+        const recallItems = await run(client, "selectLatestRecallItemsForRun", [runId]);
+        const firstMatch = recallItems.rows?.[0];
+        const canonicalMemoryId = firstMatch
+          ? (corpusBySummary.get(firstMatch.public_safe_summary) ??
+            firstMatch.memory_summary_id)
+          : null;
+
         if (replay) {
           // On replay, return the generation that was activated by the original
           // rebuild. We cannot re-derive it from the current active projection
@@ -939,7 +957,7 @@ export function createVectorMemoryProvider(options) {
             canonicalSourceCount: existingEmbeddings.rows.length,
             commitmentVerified: true,
             evidenceCommitment: deriveEvidenceCommitment(
-              null,
+              canonicalMemoryId,
               previousGenerationId,
             ),
           });
@@ -1049,7 +1067,15 @@ export function createVectorMemoryProvider(options) {
           activeGenerationId,
           canonicalSourceCount: sourceCount,
           commitmentVerified: true,
-          evidenceCommitment: deriveEvidenceCommitment(null, activeGenerationId),
+          // The evidence commitment must match the initial predicate's
+          // commitment exactly. The predicate derived it from the canonical
+          // memory ID and the ORIGINAL projection generation. The rebuild
+          // preserves the same canonical source set, so the commitment stays
+          // stable — this is what the browser validator checks for continuity.
+          evidenceCommitment: deriveEvidenceCommitment(
+            canonicalMemoryId,
+            previousGenerationId,
+          ),
         });
       });
     },
