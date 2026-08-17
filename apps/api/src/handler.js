@@ -1002,6 +1002,18 @@ async function dispatchRequest(
   }
 
   if (resolvedRoute.name === "status") {
+    // The narrow memory-slice signal. This is NOT the global readiness flag:
+    // readyForMutations stays false and currentAvailability stays
+    // NOT_CONNECTED until every deferred provider earns promotion. The slice
+    // signal reports only whether the five reviewed memory routes would pass
+    // their own two-stage gate right now, so the browser can unlock exactly
+    // that journey and nothing else.
+    const memorySliceReadiness = await resolveMemoryReadiness(
+      vectorMemoryProvider,
+      cockroachProvider,
+      configuration,
+      requestId,
+    );
     return {
       statusCode: 200,
       payload: {
@@ -1013,6 +1025,18 @@ async function dispatchRequest(
         currentAvailability: "NOT_CONNECTED",
         readyForMutations: false,
         writeOperations: "BLOCKED_UNTIL_CONNECTED",
+        memorySlice: {
+          available: memorySliceReadiness.ready,
+          scope: "five-route synthetic memory journey only",
+          routes: [
+            "create_run",
+            "close_session",
+            "recall",
+            "attempt_protected_disclosure",
+            "fetch_receipt",
+          ],
+          embeddingEvidence: "MOCK",
+        },
         actions: [...ACTIONS],
         providers: providerStates,
       },
