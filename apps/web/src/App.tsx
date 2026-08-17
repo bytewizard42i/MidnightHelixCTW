@@ -717,17 +717,27 @@ export default function App() {
           tabIndex={0}
         >
           <div className="hero__copy">
-            <p className="eyebrow">CockroachDB × AWS · Privacy memory proof</p>
-            <img
-              className="hero__art"
-              src="/helixCTW-hero.png"
-              alt="HelixCTW privacy memory architecture"
-              width="1672"
-              height="941"
-            />
+            <p className="eyebrow">CockroachDB × AWS · Persistent distributed memory</p>
+            <h1 id="hero-title">
+              Prove one thing.
+              <br />
+              <span>And nothing more.</span>
+            </h1>
+            <p className="hero__thesis">
+              The core protocol beneath a new generation of privacy-preserving
+              digital identity.
+            </p>
             <p className="hero__lede">
-              A guided TestWired case showing how durable agent memory can locate
-              context, preserve authorization, and return less data instead of more.
+              Verification today is upside down: you surrender a dozen private
+              details to prove a single fact. It should not work that way. Prove an
+              attribute without revealing anything else. Prove you are you without
+              divulging the rest. HelixCTW is the distribution and persistent
+              storage layer that makes it possible.
+            </p>
+            <p className="hero__lede hero__lede--quiet">
+              What follows is a guided TestWired case showing how durable agent
+              memory can locate context, preserve authorization, and return less
+              data instead of more.
             </p>
             <img
               className="hero__art hero__art--wide"

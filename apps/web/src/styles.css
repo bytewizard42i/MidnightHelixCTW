@@ -255,12 +255,31 @@ main,
   margin-top: 1.5rem;
 }
 
+/* Sits directly under the title, stating what HelixCTW is before the argument
+   for why it needs to exist. */
+.hero__thesis {
+  max-width: 660px;
+  margin: 1.4rem 0 0;
+  color: var(--text);
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .hero__lede {
   max-width: 660px;
   margin: 2rem 0;
   color: var(--muted);
   font-size: clamp(1.05rem, 2vw, 1.28rem);
   line-height: 1.7;
+}
+
+/* The "here is what you are about to watch" note, stepped back so it does not
+   compete with the argument above it. */
+.hero__lede--quiet {
+  margin-top: -0.6rem;
+  font-size: clamp(0.95rem, 1.7vw, 1.08rem);
+  opacity: 0.78;
 }
 
 .case-card {
