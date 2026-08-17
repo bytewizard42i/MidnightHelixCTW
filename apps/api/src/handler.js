@@ -762,7 +762,7 @@ async function executeMemoryRoute({
   };
 
   try {
-    console.error("[DIAG] executeMemoryRoute entered:", resolvedRoute.name, "action:", requestBody?.action);
+    console.log(JSON.stringify({level:"info",code:"DIAG_ROUTE",route:resolvedRoute.name,action:requestBody?.action}));
     if (resolvedRoute.name === "startRun") {
       const created = await vectorMemoryProvider.createRun({
         agentIdentifier: requestBody.agentDidz ?? CANONICAL_SCENARIO.agentDidz,
@@ -932,7 +932,7 @@ async function executeMemoryRoute({
       throw error;
     }
     // Temporary diagnostic: log the real error before mapping it
-    console.error("[DIAG] verify/rebuild error:", error?.code, error?.message, error?.stack?.split("\n").slice(0,3).join(" | "));
+    console.log(JSON.stringify({level:"error",code:"DIAG_ERROR",errCode:error?.code,errMsg:error?.message?.slice(0,200)}));
     throw memoryErrorToPublicError(error);
   }
 
@@ -1213,7 +1213,7 @@ async function dispatchRequest(
     configuration,
     requestId,
   );
-  console.error("[DIAG] readiness:", memoryReadiness.ready, "route:", resolvedRoute.name, "action:", requestBody?.action);
+  console.log(JSON.stringify({level:"info",code:"DIAG_READINESS",ready:memoryReadiness.ready,route:resolvedRoute.name,action:requestBody?.action}));
   if (memoryReadiness.ready) {
     return executeMemoryRoute({
       resolvedRoute,
