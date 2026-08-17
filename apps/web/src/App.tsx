@@ -122,12 +122,13 @@ const FLOW_STEPS: readonly FlowStep[] = [
       "After reconstruction, is the Morrow farmhouse still shown as unencumbered?",
     action: "verify_unencumbered",
   },
-  {
-    title: "Inspect independent evidence",
-    label: "Managed MCP evidence is not available yet",
-    explanation:
-      "A future read-only operator inspection will verify allowlisted database facts without exposing an MCP credential to this browser.",
-  },
+  // ── Archived: Checkpoint 8 (future work, not shown in UI) ──
+  // {
+  //   title: "Inspect independent evidence",
+  //   label: "Managed MCP evidence is not available yet",
+  //   explanation:
+  //     "A future read-only operator inspection will verify allowlisted database facts without exposing an MCP credential to this browser.",
+  // },
 ] as const;
 
 const BASE_PROVIDERS: readonly ProviderDisplay[] = [
@@ -660,7 +661,7 @@ export default function App() {
       : connection.kind === "checking"
         ? "CHECKING"
         : "NOT CONNECTED";
-  const activeFlowStep = FLOW_STEPS[currentStep] ?? FLOW_STEPS[7];
+  const activeFlowStep = FLOW_STEPS[currentStep] ?? FLOW_STEPS[6];
 
   return (
     <div
@@ -835,7 +836,7 @@ export default function App() {
             data-narration-key="checkpoint"
             tabIndex={0}
           >
-            <p className="eyebrow">One proof, eight checkpoints</p>
+            <p className="eyebrow">One proof, seven checkpoints</p>
             <h2 id="flow-title" className="flow-title--full">HelixCTW</h2>
             <h3 className="flow-subtitle">The core protocol for storage and distribution for:</h3>
             <ul className="flow-registry-list">
@@ -875,7 +876,7 @@ export default function App() {
               tabIndex={0}
             >
               <p className="active-step__number">
-                Checkpoint {Math.min(currentStep + 1, 8)} of 8
+                Checkpoint {Math.min(currentStep + 1, 7)} of 7
               </p>
               <h3>{activeFlowStep.title}</h3>
               <p>{activeFlowStep.explanation}</p>
