@@ -98,8 +98,19 @@ read-only Lambda bootstrap was deployed at release
 `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` and the public bounded
 environment-marker probe was verified (`REALDEAL_TEST` / `CONNECTED` — see
 [the live probe deployment record](archive/aws/2026-08-16-live-probe-deployment.md)).
-The fixture seed and the vector path remain incomplete, so persistent memory
-stays unproven and the overall application remains `NOT_CONNECTED`.
+On 2026-08-17 migration 002, the grant packet, and the release-bound capability
+row were applied, and the public five-checkpoint journey was proven end to end
+with a live `EXPLAIN` showing vector-index use. See
+[the live memory proof](archive/cockroachdb/2026-08-17-live-memory-proof.md).
+The overall application still reports `NOT_CONNECTED` because only the narrow
+capability-gated memory slice is available.
+
+Two activation constraints discovered live and worth knowing before repeating
+this: the Cloud SQL Shell rejects `SET ROLE` and wraps every submission in an
+explicit transaction, so it cannot toggle `schema_locked` and cannot perform
+this activation; use `psql` with `sslmode=verify-full`. Populated tables are
+schema-locked by default, so additive indexes on them need
+`SET (schema_locked = false)` first and re-locking afterwards.
 
 1. Select the Basic cluster intended for the hackathon.
 2. Use the dedicated `mhelix_testwired` database rather than sharing the public schema with unrelated

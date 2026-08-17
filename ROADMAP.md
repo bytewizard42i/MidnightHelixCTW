@@ -30,16 +30,20 @@ The release target is one public TestWired application that proves all of the fo
 | AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda | `LIVE_TESTWIRED` for public transport only; the application stack is `CREATE_COMPLETE`, read-only routes respond, and valid operations fail closed because downstream providers are disconnected. |
 | CockroachDB database and schema foundation | `LIVE_TESTWIRED` foundation evidence: database and schema `mhelix_testwired` are live; migration `001_testwired_memory_core.sql` created 10 tables owned by `mhelix_migrator`; the migrator and runtime users do not inherit `admin`; runtime marker-table access and `mhelix_runs` denial were verified; exactly one canonical marker row and one migration-001 ledger row exist in the live foundation database and passed every sanitized comparison. |
 | CockroachDB connection and TestWired environment probe | `REALDEAL_TEST` and `CONNECTED`: the deployed Helix Runtime Bridge (AWS (Amazon Web Services) Lambda) release `cd1d6c74c1d8cd440ce5659b37371fb824343ea4` carries the reviewed read-only bootstrap, and the public `/api/v1/status` route reads the bounded environment-marker probe back live. The probe proves the connection, runtime identity, and reviewed TestWired marker only; it neither proves nor enables memory persistence, vector retrieval, or mutations, and the overall application remains `NOT_CONNECTED`. |
-| CockroachDB persistent memory and vector retrieval, Bedrock, Midnight, reconstruction, Managed MCP (Model Context Protocol) | `PLANNED` and `NOT_CONNECTED`. |
+| CockroachDB persistent memory and vector retrieval | `REALDEAL_TEST` as of 2026-08-17: 63 summaries and vectors persisted through the public journey, cross-session recall proven, protected disclosure denied with zero fields returned, and a live `EXPLAIN` showing the cosine vector index in use. Embeddings remain `MOCK`. See [the live memory proof](docs/archive/cockroachdb/2026-08-17-live-memory-proof.md). |
+| CockroachDB Managed MCP (Model Context Protocol) | `REALDEAL_TEST` as an independent read-only audit path. Its identity inherits `admin`, so it is explicitly not least-privileged; narrowing it is a recorded correction gate. |
+| Bedrock, Midnight, reconstruction | `PLANNED` and `NOT_CONNECTED`. |
 | Filecoin encrypted cold evidence | `PLANNED`; it is outside the critical hackathon judge path. The post-submission allocation, Calibration lifecycle, security boundary, and promotion evidence are defined in the [Filecoin integration plan](docs/FILECOIN_INTEGRATION.md). |
 | DIDz, AgenticDID, RWAz | Synthetic fixtures are `MOCK`; callable provider connections remain `NOT_CONNECTED`. |
 
 The Friday live-service exit gate is partially met. A signed-out browser
 reaches the real Lambda transport, the real CockroachDB database and schema
 foundation exists, and the deployed release publicly verifies the bounded
-read-only environment probe. No CockroachDB-backed application-memory route
-exists yet, so persistent memory stays unproven and the overall application
-remains `NOT_CONNECTED` with `readyForMutations` false.
+read-only environment probe. **As of 2026-08-17 the CockroachDB-backed memory
+routes are live and proven end to end.** The overall application still reports
+`NOT_CONNECTED` with `readyForMutations` false, because only the narrow
+capability-gated five-route memory slice is available while every deferred
+provider stays disconnected.
 
 ## Immediate Priority Zero spine
 

@@ -40,10 +40,14 @@ and their Git histories remain untouched.
 > authenticated `mhelix_migrator` session applied that activation. Sanitized
 > post-commit readback showed exactly one canonical environment-marker row, with
 > all 8 comparisons true across the entire marker table, and exactly one
-> migration-001 ledger row, with all 6 comparisons true. The live probe does
-> not promote the CockroachDB application memory capability: the overall
-> application remains `SOURCE_ONLY` and `NOT_CONNECTED`, and
-> `readyForMutations` remains `false`. Persistent memory, vector retrieval,
+> migration-001 ledger row, with all 6 comparisons true. **On 2026-08-17 the
+> memory layer went live**: migration 002 was applied, the release-bound
+> capability was installed, and the public five-checkpoint journey stored 63
+> summaries and vectors, recalled from a fresh session, denied a protected
+> disclosure with zero fields returned, and served the immutable receipt. A
+> read-only `EXPLAIN` proves the cosine vector index is used. The overall
+> application still reports `NOT_CONNECTED` with `readyForMutations` false,
+> because only the narrow capability-gated memory slice is available. Vector retrieval,
 > and Managed MCP (Model Context Protocol) remain unproven and planned. Bedrock
 > and Midnight also remain disconnected. DIDz, AgenticDID, and RWAz retain
 > synthetic fixtures, while their callable providers remain disconnected.
@@ -75,8 +79,8 @@ No component may silently fall back to a mock.
 | --- | --- | --- |
 | CockroachDB database and schema foundation | Foundation evidence | `LIVE TESTWIRED` foundation; migration 001 applied, 10 tables plus exactly one canonical marker row and one migration-001 ledger row verified, and least-privilege runtime denial verified |
 | CockroachDB Cloud connection and environment probe | `REALDEAL_TEST` | `REALDEAL_TEST` and `CONNECTED`; the deployed Lambda's bounded read-only probe publicly verifies the connection, runtime identity, and TestWired marker. It does not prove memory, vectors, or mutations, and the overall application remains `NOT_CONNECTED` |
-| CockroachDB persistent memory and distributed vectors | `REALDEAL_TEST` | `PLANNED`; no live persistence or vector retrieval is proven |
-| CockroachDB Managed MCP (Model Context Protocol) verification | `REALDEAL_TEST` | `PLANNED` and `NOT_CONNECTED` |
+| CockroachDB persistent memory and distributed vectors | `REALDEAL_TEST` | **`REALDEAL_TEST`**; 63 summaries and vectors persisted, cross-session recall proven, and a live `EXPLAIN` shows the cosine vector index in use. Embeddings themselves are `MOCK`. See [the live memory proof](docs/archive/cockroachdb/2026-08-17-live-memory-proof.md) |
+| CockroachDB Managed MCP (Model Context Protocol) verification | `REALDEAL_TEST` | **`REALDEAL_TEST`**; used as an independent read-only audit of the live evidence. Its identity inherits `admin` and is therefore not least-privileged, recorded as a correction gate. See [the live memory proof](docs/archive/cockroachdb/2026-08-17-live-memory-proof.md) |
 | AWS (Amazon Web Services) API (Application Programming Interface) Gateway and Lambda transport | `REALDEAL_TEST` | Public transport live; downstream providers disconnected |
 | AWS (Amazon Web Services) Bedrock | `REALDEAL_TEST` | Integration work pending |
 | Midnight test-network proof receipt | `REALDEAL_TEST` | Integration work pending |
