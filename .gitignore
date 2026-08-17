@@ -28,6 +28,13 @@ private-state/
 *.mp3
 *.wav
 
+# Windows NTFS alternate-data-stream metadata — never useful in a repo.
+*:Zone.Identifier
+
+# Giant office decks and PDFs stay local; too large for git and not source.
+*.pptx
+*.pdf
+
 # Editor and operating-system files
 .DS_Store
 Thumbs.db
