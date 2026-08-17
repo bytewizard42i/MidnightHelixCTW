@@ -834,7 +834,7 @@ export default function App() {
             tabIndex={0}
           >
             <p className="eyebrow">One proof, eight checkpoints</p>
-            <h2 id="flow-title" className="flow-title--full">HelixCTW, the core protocol for storage and distribution of RWAz (Privacy-Preserving Real World Asset Tokenized Registries)</h2>
+            <h2 id="flow-title" className="flow-title--full">HelixCTW, the core protocol for storage and distribution of DIDz (Privacy-Preserving Digital Identities), Agentic DIDz, and RWAz (Privacy-Preserving Real World Asset Tokenized Registries)</h2>
             <h3 className="flow-subtitle">Welcome to the Morrow Family Farmhouse example.</h3>
             <p>
               We have some example RWAz data for the Morrow Family Farmhouse, and we will go through a guided tour asking some questions that we have limited authority to ask as we explore possibly buying the property.
