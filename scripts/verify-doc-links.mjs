@@ -5,7 +5,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const ignoredDirectories = new Set([".git", "node_modules"]);
+const ignoredDirectories = new Set([".git", "node_modules", "build"]);
 const markdownFiles = [];
 
 async function collectMarkdownFiles(directoryPath) {

@@ -70,10 +70,12 @@ export const PROVIDER_STATES = Object.freeze([
   }),
   Object.freeze({
     id: "managed-mcp",
-    label: "CockroachDB Managed MCP read-only evidence",
+    label: "CockroachDB Cloud Managed MCP Server (read-only agent inspection)",
     targetMode: "LIVE_TESTWIRED",
-    evidence: "SOURCE_ONLY",
-    connection: "NOT_CONNECTED",
+    evidence: "LIVE_TESTWIRED",
+    connection: "CONNECTED",
+    detail:
+      "The CockroachDB Cloud Managed MCP Server is connected at https://cockroachlabs.cloud/mcp with cluster helixchain-hackathon (4bd6f0f0-ed70-4501-aede-248ea6154eb4). The AI agent uses it for read-only inspection: listing databases, listing tables, running SELECT queries, and verifying schema shapes. It is a development-time agent tool, not a browser-runtime dependency.",
   }),
   Object.freeze({
     id: "didz",

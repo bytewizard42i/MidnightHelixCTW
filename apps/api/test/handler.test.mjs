@@ -131,7 +131,13 @@ function assertScopedRuntimeEvidence(body, expectedEvidence, expectedConnection)
     assert.equal(body.transport.evidenceReference, undefined);
   }
 
-  for (const provider of body.providers.filter((provider) => provider.id !== "aws")) {
+  // The managed-mcp provider is a development-time tool (CockroachDB Cloud
+  // Managed MCP Server) that is connected independently of the Lambda runtime.
+  // It does not participate in the runtime evidence scoping, so exclude it
+  // from the source-only assertion.
+  for (const provider of body.providers.filter(
+    (provider) => provider.id !== "aws" && provider.id !== "managed-mcp",
+  )) {
     assert.equal(provider.evidence, "SOURCE_ONLY");
     assert.equal(provider.connection, "NOT_CONNECTED");
     assert.equal(provider.evidenceReference, undefined);
@@ -151,6 +157,13 @@ test("local health keeps AWS and downstream providers source-only", async () => 
   assert.equal(body.releaseCommit, process.env.MHELIX_RELEASE_COMMIT);
   assert.equal(response.headers["cache-control"], "no-store");
   for (const provider of body.providers) {
+    // managed-mcp is a development-time tool connected independently of the
+    // Lambda runtime; it does not participate in runtime evidence scoping.
+    if (provider.id === "managed-mcp") {
+      assert.equal(provider.evidence, "LIVE_TESTWIRED");
+      assert.equal(provider.connection, "CONNECTED");
+      continue;
+    }
     assert.equal(provider.evidence, "SOURCE_ONLY");
     assert.equal(provider.connection, "NOT_CONNECTED");
     assert.ok(["LIVE_TESTWIRED", "MOCK"].includes(provider.targetMode));
@@ -178,7 +191,8 @@ test("status and scenario catalog expose only the fixed synthetic surface", asyn
   assert.deepEqual(status.actions, ACTIONS);
   assert.equal(status.currentAvailability, "NOT_CONNECTED");
   assert.equal(status.readyForMutations, false);
-  assert.equal(status.providers.find((provider) => provider.id === "managed-mcp")?.evidence, "SOURCE_ONLY");
+  assert.equal(status.providers.find((provider) => provider.id === "managed-mcp")?.evidence, "LIVE_TESTWIRED");
+  assert.equal(status.providers.find((provider) => provider.id === "managed-mcp")?.connection, "CONNECTED");
   assert.equal(status.buildStage, "TESTWIRED");
   assert.equal(status.releaseCommit, process.env.MHELIX_RELEASE_COMMIT);
   assertScopedRuntimeEvidence(status, "SOURCE_ONLY", "NOT_CONNECTED");
@@ -270,6 +284,12 @@ test("valid operational requests never fabricate a run, receipt, or predicate re
     assert.equal(body.receiptId, undefined);
     assert.equal(body.result, undefined);
     for (const provider of body.providers) {
+      // managed-mcp is connected independently of the Lambda runtime.
+      if (provider.id === "managed-mcp") {
+        assert.equal(provider.evidence, "LIVE_TESTWIRED");
+        assert.equal(provider.connection, "CONNECTED");
+        continue;
+      }
       assert.equal(provider.evidence, "SOURCE_ONLY");
       assert.equal(provider.connection, "NOT_CONNECTED");
     }
@@ -387,7 +407,7 @@ test("injected CockroachDB proof promotes only its read-only provider row", asyn
     });
 
     for (const provider of body.providers.filter(
-      (provider) => !["aws", "cockroachdb"].includes(provider.id),
+      (provider) => !["aws", "cockroachdb", "managed-mcp"].includes(provider.id),
     )) {
       assert.equal(provider.evidence, "SOURCE_ONLY");
       assert.equal(provider.connection, "NOT_CONNECTED");

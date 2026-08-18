@@ -123,6 +123,9 @@ const FLOW_STEPS: readonly FlowStep[] = [
     action: "verify_unencumbered",
   },
   // ── Archived: Checkpoint 8 (future work, not shown in UI) ──
+  // The CockroachDB Managed MCP Server is now connected (see provider matrix),
+  // but a browser-facing checkpoint that uses it without exposing an MCP
+  // credential to the browser remains future work.
   // {
   //   title: "Inspect independent evidence",
   //   label: "Managed MCP evidence is not available yet",
@@ -162,10 +165,10 @@ const BASE_PROVIDERS: readonly ProviderDisplay[] = [
   },
   {
     id: "managed-mcp",
-    name: "Managed MCP",
-    role: "Independent read-only judge inspection",
-    evidence: "SOURCE ONLY",
-    connection: "NOT CONNECTED",
+    name: "CockroachDB MCP",
+    role: "AI agent read-only inspection via Managed MCP Server",
+    evidence: "LIVE_TESTWIRED",
+    connection: "CONNECTED",
   },
   {
     id: "didz",
