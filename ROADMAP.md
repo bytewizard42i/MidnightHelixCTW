@@ -6,6 +6,7 @@
 **Official deadline:** Tuesday, August 18, 2026, 5:00 PM EDT
 **Judging availability:** Keep the application available through September 15,
 2026, 5:00 PM EDT
+**Announcement:** Monday, September 21, 2026, 3:00 PM EDT
 
 ## Outcome
 
