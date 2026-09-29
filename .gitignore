@@ -40,3 +40,6 @@ private-state/
 Thumbs.db
 *.swp
 *.swo
+
+# Full-quality media originals stay local (see scripts/save-media.py)
+originals/
