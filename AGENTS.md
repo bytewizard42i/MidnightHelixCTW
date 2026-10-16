@@ -247,5 +247,7 @@ in a command that enters shell history. Push at every green checkpoint rather
 than batching work locally: an unclean shutdown during this project destroyed
 the Docker image cache and every uncommitted change would have gone with it.
 
-`TaskFence` is read-only in this workspace. Other Helix assets are out of scope
-for this hackathon.
+~~`TaskFence` is read-only in this workspace. Other Helix assets are out of
+scope for this hackathon.~~ **Embargo lifted (John, Oct 7 2026):** all
+hackathon embargoes are lifted — TaskFence and the other Helix assets may be
+modified and pushed normally. The standing safeguards above still apply.

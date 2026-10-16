@@ -2,6 +2,11 @@
 
 Last updated: 2026-08-16
 
+> **Addendum 2026-10-07:** All hackathon embargoes are lifted (John). The
+> read-only/freeze instructions below for TaskFence and other Helix assets
+> are historical — normal modification rules apply; the standing safeguards
+> in `AGENTS.md` still govern.
+
 Primary execution lead: Penny
 
 Account owner and final submission owner: John
